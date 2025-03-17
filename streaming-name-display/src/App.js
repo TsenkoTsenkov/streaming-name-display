@@ -44,21 +44,6 @@ const DisplayView = ({ person, settings }) => {
   );
 };
 
-// Simulated display page - in a real app, this would be a separate route
-const DisplayPage = () => {
-  return (
-    <div className="fixed inset-0 bg-transparent flex items-center justify-center">
-      <div className="w-full max-w-2xl">
-        {/* This would receive data from server or localStorage in a real app */}
-        <DisplayView
-          person={{ name: "Example Name", surname: "", title: "Guest Speaker" }}
-          settings={{ showName: true, showTitles: true }}
-        />
-      </div>
-    </div>
-  );
-};
-
 // Mock SheetJS implementation for Excel parsing
 const XLSX = {
   read: (data, options) => {
@@ -523,7 +508,7 @@ const StreamingApp = () => {
                 <Copy size={16} className="mr-1" /> Copy
               </button>
               <a
-                href="#"
+                href="www.example.com"
                 className="p-2 bg-gradient-to-r from-green-600 to-green-800 text-white hover:from-green-700 hover:to-green-900 flex items-center transition-colors rounded-r-lg"
                 onClick={(e) => {
                   e.preventDefault();
