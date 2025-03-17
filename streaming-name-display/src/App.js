@@ -200,7 +200,7 @@ const DisplayView = ({ person, settings }) => {
   );
 };
 
-export const StreamingApp = () => {
+const StreamingApp = () => {
   // Check if we're in display mode from the URL
   const isDisplayMode = useMemo(() => {
     return window.location.search.includes("display=true");
@@ -2907,3 +2907,5 @@ export const StreamingApp = () => {
     </div>
   );
 };
+
+export default StreamingApp;
