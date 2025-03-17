@@ -1,12 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Settings,
   X,
   Copy,
   ExternalLink,
   Upload,
   Check,
   AlertCircle,
+  Edit,
+  Save,
+  Eye,
+  Sliders,
+  ChevronRight,
+  Video,
+  Palette,
+  Type,
+  Monitor,
+  HelpCircle,
 } from "lucide-react";
 
 // This component represents what would be displayed on the separate display page
@@ -16,26 +25,89 @@ const DisplayView = ({ person, settings }) => {
   // Format the displayed name based on settings
   const formattedName = settings.showName
     ? person.surname
-      ? `${person.name}/${person.surname}`
+      ? `${person.name} ${person.surname}`
       : person.name
     : "";
 
+  // Style variables based on settings
+  const getBackgroundStyle = () => {
+    switch (settings.displayStyle) {
+      case "gradient":
+        return "bg-gradient-to-r from-indigo-900/90 to-purple-900/90 backdrop-blur-sm";
+      case "solid":
+        return "bg-black/80 backdrop-blur-sm";
+      case "transparent":
+        return "bg-black/40 backdrop-blur-sm";
+      case "minimal":
+        return "bg-transparent";
+      default:
+        return "bg-gradient-to-r from-indigo-900/90 to-purple-900/90 backdrop-blur-sm";
+    }
+  };
+
+  const getBorderStyle = () => {
+    switch (settings.borderStyle) {
+      case "none":
+        return "";
+      case "thin":
+        return "border border-white/30";
+      case "glow":
+        return "ring-2 ring-purple-500/50";
+      case "accent":
+        return "border-l-4 border-l-pink-500 border-t border-r border-b border-white/20";
+      default:
+        return "border border-white/20";
+    }
+  };
+
+  const getTextShadow = () => {
+    return settings.textShadow ? "text-shadow-lg" : "";
+  };
+
+  const getTextStyle = () => {
+    switch (settings.textStyle) {
+      case "normal":
+        return "font-normal";
+      case "bold":
+        return "font-bold";
+      case "light":
+        return "font-light";
+      default:
+        return "font-normal";
+    }
+  };
+
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-transparent p-4">
-      {/* Main display area with nice styling */}
-      <div className="bg-gradient-to-r from-indigo-900/90 to-purple-900/90 rounded-lg p-6 shadow-lg backdrop-blur-sm border border-white/20 text-center w-full max-w-md transform transition-all duration-500 hover:scale-105 relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 to-purple-500"></div>
-        <div className="absolute -top-20 -left-20 w-40 h-40 rounded-full bg-pink-500/20 blur-3xl"></div>
-        <div className="absolute -bottom-20 -right-20 w-40 h-40 rounded-full bg-purple-500/20 blur-3xl"></div>
+      {/* Main display area with styling based on settings */}
+      <div
+        className={`rounded-lg p-6 text-center w-full max-w-md transform transition-all duration-500 relative overflow-hidden ${getBackgroundStyle()} ${getBorderStyle()}`}
+        style={{
+          boxShadow: settings.boxShadow
+            ? "0 10px 25px -5px rgba(0, 0, 0, 0.3)"
+            : "none",
+        }}
+      >
+        {/* Decorative elements - optional based on settings */}
+        {settings.decorativeElements && (
+          <>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 to-purple-500"></div>
+            <div className="absolute -top-20 -left-20 w-40 h-40 rounded-full bg-pink-500/20 blur-3xl"></div>
+            <div className="absolute -bottom-20 -right-20 w-40 h-40 rounded-full bg-purple-500/20 blur-3xl"></div>
+          </>
+        )}
 
         {settings.showName && formattedName && (
-          <h1 className="text-3xl font-bold text-white mb-2 relative z-10">
+          <h1
+            className={`text-3xl ${getTextStyle()} text-white mb-2 relative z-10 ${getTextShadow()}`}
+          >
             {formattedName}
           </h1>
         )}
         {settings.showTitles && person.title && (
-          <h2 className="text-xl text-white/90 italic relative z-10">
+          <h2
+            className={`text-xl text-white/90 italic relative z-10 ${getTextShadow()}`}
+          >
             {person.title}
           </h2>
         )}
@@ -68,36 +140,77 @@ const XLSX = {
 const StreamingApp = () => {
   // All state definitions grouped together at the top
   const [people, setPeople] = useState([
-    { id: 1, name: "Name1", surname: "", title: "Title 1", selected: true },
-    { id: 2, name: "Name2", surname: "", title: "", selected: false },
-    { id: 3, name: "Name3", surname: "", title: "", selected: false },
-    { id: 4, name: "Name4", surname: "", title: "", selected: false },
-    { id: 5, name: "Name5", surname: "", title: "", selected: false },
-    { id: 6, name: "Name6", surname: "", title: "", selected: false },
+    {
+      id: 1,
+      name: "Name1",
+      surname: "Surname1",
+      title: "Guest Speaker",
+      selected: true,
+      streaming: false,
+    },
+    {
+      id: 2,
+      name: "Name2",
+      surname: "Surname2",
+      title: "Host",
+      selected: false,
+      streaming: false,
+    },
+    {
+      id: 3,
+      name: "Name3",
+      surname: "Surname3",
+      title: "Panelist",
+      selected: false,
+      streaming: false,
+    },
+    {
+      id: 4,
+      name: "Name4",
+      surname: "Surname4",
+      title: "Moderator",
+      selected: false,
+      streaming: false,
+    },
   ]);
+
   const [newPerson, setNewPerson] = useState({
     name: "",
     surname: "",
     title: "",
   });
+
   const [displaySettings, setDisplaySettings] = useState({
     showName: true,
     showTitles: true,
+    displayStyle: "gradient", // gradient, solid, transparent, minimal
+    textStyle: "bold", // normal, bold, light
+    borderStyle: "thin", // none, thin, glow, accent
+    textShadow: true,
+    boxShadow: true,
+    decorativeElements: true,
   });
+
   const [isDisplayActive, setIsDisplayActive] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
-  const [animate, setAnimate] = useState({
-    nameAdded: false,
-    displayToggled: false,
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    surname: "",
+    title: "",
   });
-  const [showModal, setShowModal] = useState(false);
+  const [currentTab, setCurrentTab] = useState("people"); // people, appearance, preview
+  const [previewWindow, setPreviewWindow] = useState(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // For demo purposes, generate a display URL
   const displayUrl = window.location.href.split("?")[0] + "?display=true";
 
   // Currently selected person
-  const selectedPerson = people.find((person) => person.selected) || people[0];
+
+  // Currently streaming person
+  const streamingPerson = people.find((person) => person.streaming) || null;
 
   // Handle selecting a person
   const handleSelectPerson = (id) => {
@@ -107,6 +220,20 @@ const StreamingApp = () => {
         selected: person.id === id,
       })),
     );
+  };
+
+  // Handle streaming a person
+  const handleStreamPerson = (id) => {
+    setPeople(
+      people.map((person) => ({
+        ...person,
+        streaming: person.id === id ? !person.streaming : false,
+      })),
+    );
+    // Make sure preview is active when streaming
+    if (!isDisplayActive) {
+      setIsDisplayActive(true);
+    }
   };
 
   // Handle adding a new person
@@ -122,17 +249,53 @@ const StreamingApp = () => {
         surname: newPerson.surname,
         title: newPerson.title,
         selected: false,
+        streaming: false,
       },
     ]);
     setNewPerson({ name: "", surname: "", title: "" });
+  };
 
-    // Show animation
-    setAnimate({ ...animate, nameAdded: true });
-    setTimeout(() => setAnimate({ ...animate, nameAdded: false }), 1000);
+  // Start editing a person
+  const handleStartEdit = (person) => {
+    setEditingId(person.id);
+    setEditForm({
+      name: person.name,
+      surname: person.surname,
+      title: person.title,
+    });
+  };
+
+  // Save edits to a person
+  const handleSaveEdit = () => {
+    if (editForm.name.trim() === "") return;
+
+    setPeople(
+      people.map((person) =>
+        person.id === editingId
+          ? {
+              ...person,
+              name: editForm.name,
+              surname: editForm.surname,
+              title: editForm.title,
+            }
+          : person,
+      ),
+    );
+    setEditingId(null);
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingId(null);
   };
 
   // Handle removing a person
   const handleRemovePerson = (id) => {
+    // If we're removing the currently streaming person, stop streaming
+    const personToRemove = people.find((person) => person.id === id);
+    if (personToRemove && personToRemove.streaming) {
+      setIsDisplayActive(false);
+    }
     setPeople(people.filter((person) => person.id !== id));
   };
 
@@ -144,13 +307,17 @@ const StreamingApp = () => {
     });
   };
 
+  // Handle changing a display setting
+  const handleChangeSetting = (setting, value) => {
+    setDisplaySettings({
+      ...displaySettings,
+      [setting]: value,
+    });
+  };
+
   // Handle toggling display view with animation
   const handleDisplayToggle = () => {
     setIsDisplayActive(!isDisplayActive);
-
-    // Show animation
-    setAnimate({ ...animate, displayToggled: true });
-    setTimeout(() => setAnimate({ ...animate, displayToggled: false }), 1000);
   };
 
   // Handle copying display URL
@@ -163,6 +330,166 @@ const StreamingApp = () => {
       .catch((err) => {
         console.error("Failed to copy URL: ", err);
       });
+  };
+
+  // Open a new window with the display
+  const handleOpenDisplayWindow = () => {
+    const width = 800;
+    const height = 200;
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+    const features = `width=${width},height=${height},left=${left},top=${top}`;
+
+    // Close previous window if it exists
+    if (previewWindow && !previewWindow.closed) {
+      previewWindow.close();
+    }
+
+    // Open new window
+    const newWindow = window.open("", "displayPreview", features);
+    setPreviewWindow(newWindow);
+
+    // Write content to the new window
+    if (newWindow) {
+      newWindow.document.write(`
+        <html>
+          <head>
+            <title>Name Display</title>
+            <style>
+              body, html {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                overflow: hidden;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                background-color: transparent;
+              }
+              .container {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+              }
+              .name-display {
+                ${
+                  displaySettings.displayStyle === "gradient"
+                    ? "background: linear-gradient(to right, rgba(49, 46, 129, 0.9), rgba(88, 28, 135, 0.9));"
+                    : displaySettings.displayStyle === "solid"
+                      ? "background-color: rgba(0, 0, 0, 0.8);"
+                      : displaySettings.displayStyle === "transparent"
+                        ? "background-color: rgba(0, 0, 0, 0.4);"
+                        : "background-color: transparent;"
+                }
+                ${
+                  displaySettings.borderStyle === "none"
+                    ? ""
+                    : displaySettings.borderStyle === "thin"
+                      ? "border: 1px solid rgba(255, 255, 255, 0.3);"
+                      : displaySettings.borderStyle === "glow"
+                        ? "box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.5);"
+                        : displaySettings.borderStyle === "accent"
+                          ? "border-left: 4px solid #ec4899; border-top: 1px solid rgba(255, 255, 255, 0.2); border-right: 1px solid rgba(255, 255, 255, 0.2); border-bottom: 1px solid rgba(255, 255, 255, 0.2);"
+                          : "border: 1px solid rgba(255, 255, 255, 0.2);"
+                }
+                border-radius: 0.5rem;
+                padding: 1.5rem;
+                text-align: center;
+                max-width: 400px;
+                width: 100%;
+                backdrop-filter: blur(4px);
+                ${displaySettings.boxShadow ? "box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);" : ""}
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+              }
+              .decoration-top {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 2px;
+                background: linear-gradient(to right, #ec4899, #a855f7);
+              }
+              .decoration-blob-1 {
+                position: absolute;
+                top: -80px;
+                left: -80px;
+                width: 160px;
+                height: 160px;
+                border-radius: 50%;
+                background-color: rgba(236, 72, 153, 0.2);
+                filter: blur(64px);
+              }
+              .decoration-blob-2 {
+                position: absolute;
+                bottom: -80px;
+                right: -80px;
+                width: 160px;
+                height: 160px;
+                border-radius: 50%;
+                background-color: rgba(168, 85, 247, 0.2);
+                filter: blur(64px);
+              }
+              .name {
+                font-size: 1.875rem;
+                color: white;
+                margin-bottom: 0.5rem;
+                position: relative;
+                z-index: 10;
+                ${
+                  displaySettings.textStyle === "normal"
+                    ? "font-weight: 400;"
+                    : displaySettings.textStyle === "bold"
+                      ? "font-weight: 700;"
+                      : "font-weight: 300;"
+                }
+                ${displaySettings.textShadow ? "text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);" : ""}
+              }
+              .title {
+                font-size: 1.25rem;
+                color: rgba(255, 255, 255, 0.9);
+                font-style: italic;
+                position: relative;
+                z-index: 10;
+                ${displaySettings.textShadow ? "text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);" : ""}
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="name-display">
+                ${
+                  displaySettings.decorativeElements
+                    ? `
+                  <div class="decoration-top"></div>
+                  <div class="decoration-blob-1"></div>
+                  <div class="decoration-blob-2"></div>
+                `
+                    : ""
+                }
+                ${
+                  displaySettings.showName && streamingPerson
+                    ? `
+                  <div class="name">${streamingPerson.surname ? `${streamingPerson.name} ${streamingPerson.surname}` : streamingPerson.name}</div>
+                `
+                    : ""
+                }
+                ${
+                  displaySettings.showTitles &&
+                  streamingPerson &&
+                  streamingPerson.title
+                    ? `
+                  <div class="title">${streamingPerson.title}</div>
+                `
+                    : ""
+                }
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+      newWindow.document.close();
+    }
   };
 
   // Handle file upload
@@ -225,6 +552,7 @@ const StreamingApp = () => {
           surname: surname || "",
           title: title || "",
           selected: false,
+          streaming: false,
         };
       });
 
@@ -234,10 +562,6 @@ const StreamingApp = () => {
         success: true,
         message: `Successfully imported ${newPeople.length} people from Excel`,
       });
-
-      // Show success animation
-      setAnimate({ ...animate, nameAdded: true });
-      setTimeout(() => setAnimate({ ...animate, nameAdded: false }), 1000);
     } catch (error) {
       console.error("Error processing Excel file:", error);
       setUploadStatus({
@@ -252,417 +576,934 @@ const StreamingApp = () => {
     }
   };
 
-  // Format the displayed name based on settings
-  const getFormattedName = (person) => {
-    if (displaySettings.showName) {
-      return person.surname ? `${person.name}/${person.surname}` : person.name;
+  // Update the preview window when streaming person or settings change
+  useEffect(() => {
+    if (previewWindow && !previewWindow.closed && streamingPerson) {
+      handleOpenDisplayWindow();
     }
-    return "";
-  };
+  });
+
+  // Close the preview window when component unmounts
+  useEffect(() => {
+    return () => {
+      if (previewWindow && !previewWindow.closed) {
+        previewWindow.close();
+      }
+    };
+  });
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-purple-900 via-purple-700 to-indigo-800 text-white font-sans overflow-hidden">
-      {/* Left sidebar */}
-      <div className="w-1/4 p-4 flex flex-col bg-black/20 backdrop-blur-sm border-r border-white/10">
-        <div className="mb-6">
-          <h2 className="text-2xl mb-4 font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-300 to-purple-300">
-            Names
+    <div className="flex h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white font-sans overflow-hidden">
+      {/* Left sidebar - People Management */}
+      <div className="w-1/4 p-4 flex flex-col bg-black/20 backdrop-blur-sm border-r border-white/10 overflow-y-auto">
+        <div className="mb-4 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">
+            Streamer
           </h2>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 mb-2 flex justify-between items-center">
-            <button className="text-xs text-white/70 hover:text-white transition">
-              Choose sidebar display
-            </button>
+          <button
+            onClick={() => setShowTutorial(true)}
+            className="text-white/60 hover:text-white/90 transition p-1 rounded-full hover:bg-white/10"
+          >
+            <HelpCircle size={20} />
+          </button>
+        </div>
 
-            {/* Display simulation */}
-            {isDisplayActive && (
-              <div className="fixed top-4 right-4 z-50 bg-black/80 p-4 rounded-lg border border-white/20 shadow-lg animate-fade-in">
-                <DisplayView
-                  person={selectedPerson}
-                  settings={displaySettings}
-                />
-                <button
-                  onClick={handleDisplayToggle}
-                  className="mt-2 p-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 w-full transition-colors"
-                >
-                  Close Display Preview
-                </button>
-              </div>
-            )}
-          </div>
+        {/* Navigation Tabs */}
+        <div className="flex mb-4 bg-black/30 rounded-lg p-1">
+          <button
+            className={`flex-1 py-2 rounded-md transition-all ${
+              currentTab === "people"
+                ? "bg-white/20 text-white"
+                : "text-white/50 hover:text-white/80"
+            }`}
+            onClick={() => setCurrentTab("people")}
+          >
+            <div className="flex items-center justify-center">
+              <Type size={16} className="mr-2" />
+              People
+            </div>
+          </button>
+          <button
+            className={`flex-1 py-2 rounded-md transition-all ${
+              currentTab === "appearance"
+                ? "bg-white/20 text-white"
+                : "text-white/50 hover:text-white/80"
+            }`}
+            onClick={() => setCurrentTab("appearance")}
+          >
+            <div className="flex items-center justify-center">
+              <Palette size={16} className="mr-2" />
+              Style
+            </div>
+          </button>
+          <button
+            className={`flex-1 py-2 rounded-md transition-all ${
+              currentTab === "preview"
+                ? "bg-white/20 text-white"
+                : "text-white/50 hover:text-white/80"
+            }`}
+            onClick={() => setCurrentTab("preview")}
+          >
+            <div className="flex items-center justify-center">
+              <Monitor size={16} className="mr-2" />
+              Preview
+            </div>
+          </button>
+        </div>
 
-          {/* People list */}
-          <div className="space-y-2 mb-4 max-h-[calc(100vh-400px)] overflow-y-auto custom-scrollbar">
-            {people.length === 0 ? (
-              <div className="text-center p-4 border border-dashed border-white/20 rounded-lg bg-white/5">
-                <p className="text-white/60">No people added yet</p>
-                <p className="text-white/40 text-sm mt-1">
-                  Add people manually or import from Excel
-                </p>
-              </div>
-            ) : (
-              people.map((person) => (
-                <div
-                  key={person.id}
-                  className={`flex items-center justify-between p-4 bg-white/10 backdrop-blur-sm rounded-lg text-white cursor-pointer transition-all duration-300 hover:bg-white/20 ${
-                    person.selected
-                      ? "border-l-4 border-pink-500 bg-white/15"
-                      : "border-l-4 border-transparent"
-                  } ${animate.nameAdded ? "animate-pulse" : ""}`}
-                  onClick={() => handleSelectPerson(person.id)}
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium">
-                      {person.name} {person.surname && `${person.surname}`}
-                    </span>
-                    {person.title && (
-                      <span className="text-sm text-white/70 italic">
-                        {person.title}
-                      </span>
+        {/* People Tab Content */}
+        {currentTab === "people" && (
+          <>
+            {/* People list */}
+            <div className="space-y-2 mb-4 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar">
+              {people.length === 0 ? (
+                <div className="text-center p-6 border border-dashed border-white/20 rounded-lg bg-white/5">
+                  <p className="text-white/60">No people added yet</p>
+                  <p className="text-white/40 text-sm mt-2">
+                    Add people manually or import from Excel
+                  </p>
+                </div>
+              ) : (
+                people.map((person) => (
+                  <div
+                    key={person.id}
+                    className={`p-4 bg-white/10 backdrop-blur-sm rounded-lg text-white transition-all duration-300 hover:bg-white/15 ${
+                      person.selected
+                        ? "border-l-4 border-l-blue-500 border-t border-r border-b border-white/20"
+                        : "border border-white/10"
+                    } ${person.streaming ? "bg-gradient-to-r from-green-900/40 to-green-800/40 border-green-500/50" : ""}`}
+                  >
+                    {editingId === person.id ? (
+                      // Edit mode
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Name"
+                          className="w-full p-2 rounded border border-white/30 bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-white/50 transition-all"
+                          value={editForm.name}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, name: e.target.value })
+                          }
+                        />
+                        <input
+                          type="text"
+                          placeholder="Surname (optional)"
+                          className="w-full p-2 rounded border border-white/30 bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-white/50 transition-all"
+                          value={editForm.surname}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              surname: e.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          type="text"
+                          placeholder="Title (optional)"
+                          className="w-full p-2 rounded border border-white/30 bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-white/50 transition-all"
+                          value={editForm.title}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, title: e.target.value })
+                          }
+                        />
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={handleSaveEdit}
+                            className="flex-1 p-2 bg-blue-600 hover:bg-blue-700 transition-colors rounded text-white flex items-center justify-center"
+                          >
+                            <Save size={16} className="mr-2" /> Save
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="flex-1 p-2 bg-gray-600 hover:bg-gray-700 transition-colors rounded text-white flex items-center justify-center"
+                          >
+                            <X size={16} className="mr-2" /> Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      // View mode
+                      <>
+                        <div className="flex flex-col mb-2">
+                          <span className="font-medium text-lg">
+                            {person.name} {person.surname && person.surname}
+                          </span>
+                          {person.title && (
+                            <span className="text-sm text-white/70 italic">
+                              {person.title}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex justify-between items-center mt-3">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleSelectPerson(person.id)}
+                              className={`p-2 rounded text-xs flex items-center ${
+                                person.selected
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-white/10 text-white/70 hover:bg-white/20"
+                              }`}
+                            >
+                              <Eye size={14} className="mr-1" /> Select
+                            </button>
+                            <button
+                              onClick={() => handleStreamPerson(person.id)}
+                              className={`p-2 rounded text-xs flex items-center ${
+                                person.streaming
+                                  ? "bg-green-600 text-white"
+                                  : "bg-white/10 text-white/70 hover:bg-white/20"
+                              }`}
+                            >
+                              <Video size={14} className="mr-1" />{" "}
+                              {person.streaming ? "Live" : "Stream"}
+                            </button>
+                          </div>
+
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => handleStartEdit(person)}
+                              className="p-2 text-white/50 hover:text-blue-400 transition-colors hover:bg-white/10 rounded"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleRemovePerson(person.id)}
+                              className="p-2 text-white/50 hover:text-red-400 transition-colors hover:bg-white/10 rounded"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemovePerson(person.id);
-                    }}
-                    className="text-white/50 hover:text-red-400 transition-colors p-1 rounded-full hover:bg-white/10"
+                ))
+              )}
+            </div>
+
+            {/* Add new person form */}
+            <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg text-white border border-white/10">
+              <h3 className="font-bold mb-3 text-white">Add New Person</h3>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Name"
+                  className="w-full p-2 rounded border border-white/30 bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-white/50 transition-all"
+                  value={newPerson.name}
+                  onChange={(e) =>
+                    setNewPerson({ ...newPerson, name: e.target.value })
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="Surname (optional)"
+                  className="w-full p-2 rounded border border-white/30 bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-white/50 transition-all"
+                  value={newPerson.surname}
+                  onChange={(e) =>
+                    setNewPerson({ ...newPerson, surname: e.target.value })
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="Title (optional)"
+                  className="w-full p-2 rounded border border-white/30 bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-white/50 transition-all"
+                  value={newPerson.title}
+                  onChange={(e) =>
+                    setNewPerson({ ...newPerson, title: e.target.value })
+                  }
+                />
+                <button
+                  onClick={handleAddPerson}
+                  disabled={!newPerson.name.trim()}
+                  className={`w-full p-2 rounded font-medium transition-all ${
+                    newPerson.name.trim()
+                      ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                      : "bg-white/10 text-white/50 cursor-not-allowed"
+                  }`}
+                >
+                  Add Person
+                </button>
+              </div>
+            </div>
+
+            {/* Excel Import */}
+            <div className="mt-4">
+              <div className="border border-dashed border-white/20 rounded-lg p-4 bg-white/5 text-center">
+                <h3 className="font-bold mb-2 text-white">Import from Excel</h3>
+                <p className="text-white/70 text-sm mb-2">
+                  Upload an Excel sheet with columns for Name, Surname, and
+                  Title
+                </p>
+
+                <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer hover:bg-white/10 bg-gray-800/50 border-white/20 transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-4 pb-4">
+                    <Upload
+                      className={`w-6 h-6 mb-1 text-white/70 ${isUploading ? "animate-bounce" : ""}`}
+                    />
+                    <p className="text-sm text-white/70">
+                      <span className="font-semibold">Click to upload</span>
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                  />
+                </label>
+
+                {uploadStatus && (
+                  <div
+                    className={`mt-2 p-2 rounded text-sm ${
+                      uploadStatus.success
+                        ? "bg-green-500/20 text-green-100"
+                        : "bg-red-500/20 text-red-100"
+                    }`}
                   >
-                    <X size={16} />
+                    {uploadStatus.success ? (
+                      <div className="flex items-center">
+                        <Check size={14} className="mr-1" />
+                        {uploadStatus.message}
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <AlertCircle size={14} className="mr-1" />
+                        {uploadStatus.message}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Appearance Tab Content */}
+        {currentTab === "appearance" && (
+          <div className="space-y-4">
+            <div className="bg-white/10 p-4 rounded-lg border border-white/10">
+              <h3 className="text-lg font-medium mb-4 flex items-center">
+                <Palette size={18} className="mr-2 text-purple-400" /> Display
+                Style
+              </h3>
+
+              <div className="space-y-3">
+                <div className="flex flex-col space-y-2">
+                  <label className="text-sm text-white/70">Background</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() =>
+                        handleChangeSetting("displayStyle", "gradient")
+                      }
+                      className={`p-2 rounded-lg flex items-center justify-center ${
+                        displaySettings.displayStyle === "gradient"
+                          ? "bg-gradient-to-r from-indigo-900 to-purple-900 ring-2 ring-purple-500"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      Gradient
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleChangeSetting("displayStyle", "solid")
+                      }
+                      className={`p-2 rounded-lg flex items-center justify-center ${
+                        displaySettings.displayStyle === "solid"
+                          ? "bg-black ring-2 ring-purple-500"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      Solid
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleChangeSetting("displayStyle", "transparent")
+                      }
+                      className={`p-2 rounded-lg flex items-center justify-center ${
+                        displaySettings.displayStyle === "transparent"
+                          ? "bg-black/40 ring-2 ring-purple-500"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      Transparent
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleChangeSetting("displayStyle", "minimal")
+                      }
+                      className={`p-2 rounded-lg flex items-center justify-center ${
+                        displaySettings.displayStyle === "minimal"
+                          ? "bg-transparent ring-2 ring-purple-500"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      Minimal
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col space-y-2">
+                  <label className="text-sm text-white/70">Text Style</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => handleChangeSetting("textStyle", "normal")}
+                      className={`p-2 rounded-lg flex items-center justify-center ${
+                        displaySettings.textStyle === "normal"
+                          ? "bg-white/20 ring-2 ring-purple-500"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      Normal
+                    </button>
+                    <button
+                      onClick={() => handleChangeSetting("textStyle", "bold")}
+                      className={`p-2 rounded-lg flex items-center justify-center font-bold ${
+                        displaySettings.textStyle === "bold"
+                          ? "bg-white/20 ring-2 ring-purple-500"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      Bold
+                    </button>
+                    <button
+                      onClick={() => handleChangeSetting("textStyle", "light")}
+                      className={`p-2 rounded-lg flex items-center justify-center font-light ${
+                        displaySettings.textStyle === "light"
+                          ? "bg-white/20 ring-2 ring-purple-500"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      Light
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col space-y-2">
+                  <label className="text-sm text-white/70">Border Style</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleChangeSetting("borderStyle", "none")}
+                      className={`p-2 rounded-lg flex items-center justify-center ${
+                        displaySettings.borderStyle === "none"
+                          ? "bg-white/20 ring-2 ring-purple-500"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      None
+                    </button>
+                    <button
+                      onClick={() => handleChangeSetting("borderStyle", "thin")}
+                      className={`p-2 rounded-lg flex items-center justify-center border border-white/30 ${
+                        displaySettings.borderStyle === "thin"
+                          ? "bg-white/20 ring-2 ring-purple-500"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      Thin
+                    </button>
+                    <button
+                      onClick={() => handleChangeSetting("borderStyle", "glow")}
+                      className={`p-2 rounded-lg flex items-center justify-center ${
+                        displaySettings.borderStyle === "glow"
+                          ? "bg-white/20 ring-2 ring-purple-500/70 shadow-lg shadow-purple-500/30"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      Glow
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleChangeSetting("borderStyle", "accent")
+                      }
+                      className={`p-2 rounded-lg flex items-center justify-center border-l-4 border-l-pink-500 border-t border-r border-b border-white/20 ${
+                        displaySettings.borderStyle === "accent"
+                          ? "bg-white/20 ring-2 ring-purple-500"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      Accent
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/10 p-4 rounded-lg border border-white/10">
+              <h3 className="text-lg font-medium mb-4 flex items-center">
+                <Sliders size={18} className="mr-2 text-purple-400" /> Effects
+              </h3>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <div>
+                    <div className="text-white">Text Shadow</div>
+                    <div className="text-white/60 text-sm">
+                      Add shadow to text for better visibility
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={displaySettings.textShadow}
+                      onChange={() => handleToggleSetting("textShadow")}
+                    />
+                    <div className="w-11 h-6 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600/80"></div>
+                  </label>
+                </div>
+
+                <div className="flex justify-between items-center p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <div>
+                    <div className="text-white">Box Shadow</div>
+                    <div className="text-white/60 text-sm">
+                      Add shadow to container
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={displaySettings.boxShadow}
+                      onChange={() => handleToggleSetting("boxShadow")}
+                    />
+                    <div className="w-11 h-6 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600/80"></div>
+                  </label>
+                </div>
+
+                <div className="flex justify-between items-center p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <div>
+                    <div className="text-white">Decorative Elements</div>
+                    <div className="text-white/60 text-sm">
+                      Add gradient line and blurred orbs
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={displaySettings.decorativeElements}
+                      onChange={() => handleToggleSetting("decorativeElements")}
+                    />
+                    <div className="w-11 h-6 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600/80"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/10 p-4 rounded-lg border border-white/10">
+              <h3 className="text-lg font-medium mb-4 flex items-center">
+                <Type size={18} className="mr-2 text-purple-400" /> Content
+              </h3>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <div>
+                    <div className="text-white">Show Name</div>
+                    <div className="text-white/60 text-sm">
+                      Display person's name
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={displaySettings.showName}
+                      onChange={() => handleToggleSetting("showName")}
+                    />
+                    <div className="w-11 h-6 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600/80"></div>
+                  </label>
+                </div>
+
+                <div className="flex justify-between items-center p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <div>
+                    <div className="text-white">Show Titles</div>
+                    <div className="text-white/60 text-sm">
+                      Display person's title or role
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={displaySettings.showTitles}
+                      onChange={() => handleToggleSetting("showTitles")}
+                    />
+                    <div className="w-11 h-6 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600/80"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Preview Tab Content */}
+        {currentTab === "preview" && (
+          <div className="space-y-4">
+            <div className="bg-white/10 p-4 rounded-lg border border-white/10">
+              <h3 className="text-lg font-medium mb-3 flex items-center">
+                <Monitor size={18} className="mr-2 text-purple-400" /> Preview
+                Control
+              </h3>
+
+              <div className="space-y-4">
+                <button
+                  onClick={handleDisplayToggle}
+                  className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center transition-all ${
+                    isDisplayActive
+                      ? "bg-gradient-to-r from-red-600 to-red-800 shadow-lg shadow-red-700/30"
+                      : "bg-gradient-to-r from-gray-900 to-black/50 shadow-lg shadow-purple-700/20"
+                  }`}
+                >
+                  <Monitor size={18} className="mr-2" />
+                  {isDisplayActive ? "Hide Preview" : "Show Preview"}
+                </button>
+
+                {streamingPerson ? (
+                  <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-3">
+                    <div className="flex items-center mb-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></div>
+                      <span className="font-medium">Now Streaming:</span>
+                    </div>
+                    <div className="pl-4 border-l-2 border-green-500/30">
+                      <div className="font-medium">
+                        {streamingPerson.name} {streamingPerson.surname}
+                      </div>
+                      {streamingPerson.title && (
+                        <div className="text-sm text-white/70 italic">
+                          {streamingPerson.title}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-800/50 border border-white/10 rounded-lg p-3 text-center text-white/60">
+                    No one is currently being streamed.
+                    <div className="mt-1 text-sm">
+                      Click the "Stream" button next to a person to start.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white/10 p-4 rounded-lg border border-white/10">
+              <h3 className="text-lg font-medium mb-3 flex items-center">
+                <ExternalLink size={18} className="mr-2 text-purple-400" /> OBS
+                Setup
+              </h3>
+
+              <div className="mb-4">
+                <label className="block mb-2 text-sm text-white/80">
+                  Display URL (add as browser source in OBS)
+                </label>
+                <div className="flex">
+                  <input
+                    type="text"
+                    className="flex-1 p-2 rounded-l-lg bg-gray-800 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={displayUrl}
+                    readOnly
+                  />
+                  <button
+                    onClick={handleCopyDisplayUrl}
+                    className="p-2 bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-700 hover:to-blue-900 flex items-center transition-colors"
+                  >
+                    <Copy size={16} className="mr-1" /> Copy
+                  </button>
+                  <button
+                    onClick={handleOpenDisplayWindow}
+                    className="p-2 bg-gradient-to-r from-green-600 to-green-800 text-white hover:from-green-700 hover:to-green-900 flex items-center transition-colors rounded-r-lg"
+                  >
+                    <ExternalLink size={16} className="mr-1" /> Open
                   </button>
                 </div>
-              ))
+              </div>
+
+              <div className="space-y-2 text-sm text-white/80">
+                <p className="mb-2">Quick Setup Instructions:</p>
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li>In OBS Studio, add a "Browser" source to your scene</li>
+                  <li>Paste the Display URL above as the URL</li>
+                  <li>Set width to 800 and height to 200</li>
+                  <li>Check "Refresh browser when scene becomes active"</li>
+                  <li>Position the source where names should appear</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Center content - Preview */}
+      <div className="w-2/4 p-6 flex flex-col items-center">
+        <h1 className="text-3xl mb-8 font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">
+          Name Display Control
+        </h1>
+
+        {/* Preview Display */}
+        <div className="mt-4 w-full max-w-xl">
+          <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white px-6 py-3 text-lg rounded-t-lg font-medium flex items-center justify-between border-b border-white/10">
+            <span>Live Preview</span>
+            {streamingPerson && (
+              <div className="flex items-center text-sm text-green-400">
+                <div className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></div>
+                Streaming
+              </div>
             )}
           </div>
 
-          {/* Excel Import */}
-          <div className="mb-4">
-            <div className="border border-dashed border-white/20 rounded-lg p-4 bg-white/5 text-center">
-              <h3 className="font-bold mb-2 text-white">Import from Excel</h3>
-              <p className="text-white/70 text-sm mb-2">
-                Upload an Excel sheet with columns for Name, Surname, and Title
-              </p>
-
-              <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer hover:bg-white/10 bg-white/5 border-white/20 transition-colors">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload
-                    className={`w-6 h-6 mb-1 text-white/70 ${isUploading ? "animate-bounce" : ""}`}
-                  />
-                  <p className="text-sm text-white/70">
-                    <span className="font-semibold">Click to upload</span> or
-                    drag and drop
-                  </p>
-                  <p className="text-xs text-white/50">
-                    Excel files only (.xlsx, .xls)
-                  </p>
-                </div>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".xlsx, .xls"
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
+          <div className="bg-black/40 backdrop-blur-sm rounded-b-lg p-6 w-full border border-white/10 shadow-lg">
+            <div className="border border-dashed border-white/20 p-8 rounded-lg flex flex-col items-center justify-center min-h-40 bg-black/40">
+              {/* Main preview component */}
+              {streamingPerson ? (
+                <DisplayView
+                  person={streamingPerson}
+                  settings={displaySettings}
                 />
-              </label>
-
-              {uploadStatus && (
-                <div
-                  className={`mt-2 p-2 rounded text-sm ${
-                    uploadStatus.success
-                      ? "bg-green-500/20 text-green-100"
-                      : "bg-red-500/20 text-red-100"
-                  }`}
-                >
-                  {uploadStatus.success ? (
-                    <div className="flex items-center">
-                      <Check size={14} className="mr-1" />
-                      {uploadStatus.message}
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <AlertCircle size={14} className="mr-1" />
-                      {uploadStatus.message}
-                    </div>
-                  )}
+              ) : (
+                <div className="text-center text-white/50">
+                  <div className="mb-2 text-lg">No content streaming</div>
+                  <div className="text-sm">
+                    Click "Stream" next to a person to display them
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Add new person form */}
-          <div className="p-4 bg-white/10 backdrop-blur-sm rounded-lg text-white">
-            <h3 className="font-bold mb-2 text-white">Add New Person</h3>
-            <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="Name"
-                className="w-full p-2 rounded border border-white/20 bg-white/5 focus:outline-none focus:ring-2 focus:ring-pink-500 text-white placeholder-white/50 transition-all"
-                value={newPerson.name}
-                onChange={(e) =>
-                  setNewPerson({ ...newPerson, name: e.target.value })
-                }
-              />
-              <input
-                type="text"
-                placeholder="Surname (optional)"
-                className="w-full p-2 rounded border border-white/20 bg-white/5 focus:outline-none focus:ring-2 focus:ring-pink-500 text-white placeholder-white/50 transition-all"
-                value={newPerson.surname}
-                onChange={(e) =>
-                  setNewPerson({ ...newPerson, surname: e.target.value })
-                }
-              />
-              <input
-                type="text"
-                placeholder="Title (optional)"
-                className="w-full p-2 rounded border border-white/20 bg-white/5 focus:outline-none focus:ring-2 focus:ring-pink-500 text-white placeholder-white/50 transition-all"
-                value={newPerson.title}
-                onChange={(e) =>
-                  setNewPerson({ ...newPerson, title: e.target.value })
-                }
-              />
-              <button
-                onClick={handleAddPerson}
-                disabled={!newPerson.name.trim()}
-                className={`w-full p-2 rounded font-medium transition-all ${
-                  newPerson.name.trim()
-                    ? "bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
-                    : "bg-white/10 text-white/50 cursor-not-allowed"
-                }`}
-              >
-                Add Person
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+          {/* Quick settings under preview */}
+          <div className="mt-6 bg-white/5 rounded-lg border border-white/10 p-4">
+            <h3 className="text-lg font-medium mb-3">Quick Settings</h3>
 
-      {/* Center content */}
-      <div className="w-2/4 p-4 flex flex-col items-center">
-        <h1 className="text-4xl mb-10 font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-300 to-pink-300">
-          Streaming
-        </h1>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={displaySettings.showName}
+                    onChange={() => handleToggleSetting("showName")}
+                  />
+                  <div className="w-10 h-5 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600/80"></div>
+                </label>
+                <span className="text-sm">Show Name</span>
+              </div>
 
-        {/* Display control button */}
-        <div className="relative mt-10">
-          <button
-            onClick={handleDisplayToggle}
-            className={`px-8 py-4 text-2xl rounded-lg font-bold transition-all duration-300 ${
-              isDisplayActive
-                ? "bg-gradient-to-r from-red-600 to-red-800 shadow-lg shadow-red-700/30"
-                : "bg-gradient-to-r from-gray-900 to-black shadow-lg shadow-purple-700/20"
-            } text-white ${animate.displayToggled ? "animate-pulse" : ""}`}
-          >
-            {isDisplayActive ? "Hide Display" : "Show Display"}
-          </button>
+              <div className="flex items-center space-x-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={displaySettings.showTitles}
+                    onChange={() => handleToggleSetting("showTitles")}
+                  />
+                  <div className="w-10 h-5 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600/80"></div>
+                </label>
+                <span className="text-sm">Show Title</span>
+              </div>
 
-          {/* Decorative lines */}
-          <div
-            className="absolute top-0 right-0 w-40 h-40 border-t-2 border-r-2 border-pink-500/50"
-            style={{ transform: "translate(100%, -50%)" }}
-          ></div>
-          <div
-            className="absolute bottom-0 right-0 w-40 h-40 border-b-2 border-r-2 border-pink-500/50"
-            style={{ transform: "translate(100%, 50%)" }}
-          ></div>
-        </div>
+              <div className="flex items-center space-x-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={displaySettings.textShadow}
+                    onChange={() => handleToggleSetting("textShadow")}
+                  />
+                  <div className="w-10 h-5 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600/80"></div>
+                </label>
+                <span className="text-sm">Text Shadow</span>
+              </div>
 
-        {/* Preview section */}
-        <div className="mt-10 w-full max-w-lg">
-          <div className="bg-gradient-to-r from-gray-900 to-black text-white px-8 py-4 text-xl rounded-t-lg font-medium flex items-center justify-center border-b border-white/10">
-            <span className="mr-2">Preview</span>
-          </div>
-
-          <div className="bg-black/40 backdrop-blur-sm rounded-b-lg p-6 w-full border border-white/10 shadow-lg">
-            <div className="border border-dashed border-white/20 p-8 rounded-lg flex flex-col items-center justify-center min-h-32">
-              {/* Preview of what will be shown on the display page */}
-              <div className="bg-gradient-to-r from-indigo-900/90 to-purple-900/90 rounded-lg p-6 shadow-lg border border-white/20 text-center w-full transform transition-all duration-300 hover:scale-105">
-                {displaySettings.showName && (
-                  <div className="text-2xl font-bold text-white mb-2">
-                    {getFormattedName(selectedPerson)}
-                  </div>
-                )}
-                {displaySettings.showTitles && selectedPerson.title && (
-                  <div className="text-lg text-white/90 italic">
-                    {selectedPerson.title}
-                  </div>
-                )}
+              <div className="flex items-center space-x-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={displaySettings.decorativeElements}
+                    onChange={() => handleToggleSetting("decorativeElements")}
+                  />
+                  <div className="w-10 h-5 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600/80"></div>
+                </label>
+                <span className="text-sm">Decorations</span>
               </div>
             </div>
           </div>
 
-          {/* Display URL */}
+          {/* Display style presets */}
           <div className="mt-6">
-            <label className="block mb-2 font-medium text-white/80">
-              Display Page URL (add as browser source in OBS)
-            </label>
-            <div className="flex">
-              <input
-                type="text"
-                className="flex-1 p-2 rounded-l-lg bg-black/30 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                value={displayUrl}
-                readOnly
-              />
+            <h3 className="text-lg font-medium mb-3">Style Presets</h3>
+            <div className="grid grid-cols-3 gap-3">
               <button
-                onClick={handleCopyDisplayUrl}
-                className="p-2 bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-700 hover:to-blue-900 flex items-center transition-colors rounded-none"
-              >
-                <Copy size={16} className="mr-1" /> Copy
-              </button>
-              <a
-                href="https://example.com"
-                className="p-2 bg-gradient-to-r from-green-600 to-green-800 text-white hover:from-green-700 hover:to-green-900 flex items-center transition-colors rounded-r-lg"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.open(displayUrl, "_blank", "width=800,height=200");
+                className="p-3 rounded-lg bg-gradient-to-r from-indigo-900/90 to-purple-900/90 border border-white/20 shadow-md hover:shadow-lg transition-all text-center"
+                onClick={() => {
+                  setDisplaySettings({
+                    ...displaySettings,
+                    displayStyle: "gradient",
+                    borderStyle: "thin",
+                    textStyle: "bold",
+                    textShadow: true,
+                    boxShadow: true,
+                    decorativeElements: true,
+                  });
                 }}
               >
-                <ExternalLink size={16} className="mr-1" /> Open
-              </a>
-            </div>
+                <div className="text-sm font-medium mb-1">Gradient</div>
+                <div className="text-xs text-white/60">Classic style</div>
+              </button>
 
-            <div className="mt-4 text-center">
               <button
-                onClick={() => setShowModal(true)}
-                className="text-sm text-white/70 hover:text-white underline transition-colors"
+                className="p-3 rounded-lg bg-black/80 border border-white/20 shadow-md hover:shadow-lg transition-all text-center"
+                onClick={() => {
+                  setDisplaySettings({
+                    ...displaySettings,
+                    displayStyle: "solid",
+                    borderStyle: "none",
+                    textStyle: "light",
+                    textShadow: false,
+                    boxShadow: true,
+                    decorativeElements: false,
+                  });
+                }}
               >
-                View setup instructions
+                <div className="text-sm font-medium mb-1">Minimal</div>
+                <div className="text-xs text-white/60">Clean look</div>
+              </button>
+
+              <button
+                className="p-3 rounded-lg bg-black/40 border-l-4 border-l-pink-500 border-t border-r border-b border-white/20 shadow-md hover:shadow-lg transition-all text-center"
+                onClick={() => {
+                  setDisplaySettings({
+                    ...displaySettings,
+                    displayStyle: "transparent",
+                    borderStyle: "accent",
+                    textStyle: "bold",
+                    textShadow: true,
+                    boxShadow: false,
+                    decorativeElements: false,
+                  });
+                }}
+              >
+                <div className="text-sm font-medium mb-1">Accented</div>
+                <div className="text-xs text-white/60">
+                  With color highlight
+                </div>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Right settings */}
-      <div className="w-1/4 p-4 bg-black/20 backdrop-blur-sm border-l border-white/10">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-300 to-pink-300">
-            Shape
-          </h2>
-          <Settings size={24} className="text-white/70" />
-        </div>
-
-        {/* Display settings */}
-        <div className="space-y-4">
-          <div className="bg-gradient-to-r from-green-900/40 to-green-800/40 p-4 rounded-lg border border-green-500/30 backdrop-blur-sm transition-all duration-300 hover:from-green-900/60 hover:to-green-800/60">
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="text-white font-medium">Name</div>
-                <div className="text-white/70">
-                  {getFormattedName(selectedPerson) || "No name selected"}
-                </div>
+      {/* Display simulation */}
+      {isDisplayActive && (
+        <div className="fixed top-4 right-4 z-50 bg-black/80 p-4 rounded-lg border border-white/20 shadow-lg animate-fade-in">
+          {streamingPerson ? (
+            <DisplayView person={streamingPerson} settings={displaySettings} />
+          ) : (
+            <div className="text-center text-white/70 p-4">
+              <div className="mb-2">No one is currently streaming</div>
+              <div className="text-sm">
+                Select a person and click "Stream" to display them
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={displaySettings.showName}
-                  onChange={() => handleToggleSetting("showName")}
-                />
-                <div className="w-11 h-6 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600/80"></div>
-              </label>
             </div>
-          </div>
-
-          <div className="bg-gradient-to-r from-green-900/40 to-green-800/40 p-4 rounded-lg border border-green-500/30 backdrop-blur-sm transition-all duration-300 hover:from-green-900/60 hover:to-green-800/60">
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="text-white font-medium">Titles</div>
-                <div className="text-white/70">
-                  {selectedPerson.title || "No title"}
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={displaySettings.showTitles}
-                  onChange={() => handleToggleSetting("showTitles")}
-                />
-                <div className="w-11 h-6 bg-gray-700/50 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600/80"></div>
-              </label>
-            </div>
-          </div>
+          )}
+          <button
+            onClick={handleDisplayToggle}
+            className="mt-2 p-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 w-full transition-colors"
+          >
+            Close Preview
+          </button>
         </div>
+      )}
 
-        {/* More settings */}
-        <div className="mt-8">
-          <h3 className="text-lg font-medium mb-3 text-white/90">
-            Display Style
-          </h3>
-
-          <div className="space-y-2">
-            <div className="bg-white/10 p-3 rounded-lg flex items-center cursor-pointer transition-all hover:bg-white/15 border border-white/0 hover:border-white/20">
-              <div className="w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full bg-white"></div>
-              </div>
-              <span>Gradient Background</span>
-            </div>
-
-            <div className="bg-white/5 p-3 rounded-lg flex items-center cursor-pointer transition-all hover:bg-white/15 border border-white/0 hover:border-white/20">
-              <div className="w-4 h-4 rounded-full border-2 border-white mr-2"></div>
-              <span>Solid Background</span>
-            </div>
-
-            <div className="bg-white/5 p-3 rounded-lg flex items-center cursor-pointer transition-all hover:bg-white/15 border border-white/0 hover:border-white/20">
-              <div className="w-4 h-4 rounded-full border-2 border-white mr-2"></div>
-              <span>Transparent</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Help Modal */}
-      {showModal && (
+      {/* Tutorial Modal */}
+      {showTutorial && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-gradient-to-b from-gray-900 to-black border border-white/20 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">OBS Setup Instructions</h2>
+              <h2 className="text-xl font-bold">
+                How to Use the Name Display Tool
+              </h2>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => setShowTutorial(false)}
                 className="text-white/70 hover:text-white"
               >
                 <X size={24} />
               </button>
             </div>
 
-            <div className="prose prose-invert">
-              <h3>Adding the Name Display to OBS</h3>
-              <ol className="space-y-2 list-decimal pl-5">
-                <li>In OBS Studio, click the + button in the Sources panel</li>
-                <li>Select "Browser" from the list of sources</li>
-                <li>Name your source (e.g., "Name Display") and click OK</li>
-                <li>
-                  In the URL field, paste the Display URL you copied from this
-                  app
-                </li>
-                <li>Set the width and height (recommended: 800×200)</li>
-                <li>Check "Refresh browser when scene becomes active"</li>
-                <li>Click OK to add the browser source</li>
-              </ol>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium flex items-center">
+                  <ChevronRight size={18} className="mr-2 text-blue-400" />{" "}
+                  Adding People
+                </h3>
+                <p className="text-white/80 pl-6">
+                  Add individuals manually by filling out the form at the bottom
+                  of the People tab, or import multiple people from an Excel
+                  spreadsheet.
+                </p>
+              </div>
 
-              <h3 className="mt-4">Tips for Best Results</h3>
-              <ul className="space-y-2 list-disc pl-5">
-                <li>
-                  Position the browser source where you want names to appear in
-                  your stream
-                </li>
-                <li>
-                  Use this control panel to switch between different people
-                  during your stream
-                </li>
-                <li>
-                  The display updates in real-time as you select different
-                  people
-                </li>
-                <li>
-                  You may want to add a small border or drop shadow in OBS for
-                  better visibility
-                </li>
-              </ul>
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium flex items-center">
+                  <ChevronRight size={18} className="mr-2 text-blue-400" />{" "}
+                  Selecting vs Streaming
+                </h3>
+                <p className="text-white/80 pl-6">
+                  <span className="text-blue-400 font-medium">Select</span> a
+                  person to view them in the preview.{" "}
+                  <span className="text-green-400 font-medium">Stream</span> a
+                  person to display their name in OBS and other tools.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium flex items-center">
+                  <ChevronRight size={18} className="mr-2 text-blue-400" />{" "}
+                  Customizing Display
+                </h3>
+                <p className="text-white/80 pl-6">
+                  Use the Style tab to customize how names will appear. Try
+                  different background styles, text options, and effects for
+                  optimal visibility.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium flex items-center">
+                  <ChevronRight size={18} className="mr-2 text-blue-400" /> OBS
+                  Integration
+                </h3>
+                <p className="text-white/80 pl-6">
+                  Add the display URL as a Browser Source in OBS. The display
+                  will update automatically when you stream different people.
+                  Size recommendation: 800×200px.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium flex items-center">
+                  <ChevronRight size={18} className="mr-2 text-blue-400" /> Tips
+                  for Video Overlay
+                </h3>
+                <ul className="text-white/80 pl-8 list-disc space-y-1">
+                  <li>
+                    Use text shadows when displaying over busy backgrounds
+                  </li>
+                  <li>Transparent styles work well over video feeds</li>
+                  <li>
+                    For better legibility, use bold text on gradient backgrounds
+                  </li>
+                  <li>Position the display in the lower third of your video</li>
+                </ul>
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => setShowTutorial(false)}
                 className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white hover:from-blue-700 hover:to-purple-700 transition-colors"
               >
                 Got it
@@ -672,808 +1513,10 @@ const StreamingApp = () => {
         </div>
       )}
 
-      {/* Custom CSS */}
+      {/* CSS for animations and other effects */}
       <style jsx global>{`
-        body {
-          margin: 0;
-          padding: 0;
-          font-family:
-            -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-            Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-        }
-
-        /* CSS for all the utility classes in the app */
-        .flex {
-          display: flex;
-        }
-        .h-screen {
-          height: 100vh;
-        }
-        .bg-gradient-to-br {
-          background-image: linear-gradient(
-            to bottom right,
-            var(--tw-gradient-stops)
-          );
-        }
-        .from-purple-900 {
-          --tw-gradient-from: #581c87;
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(88, 28, 135, 0));
-        }
-        .via-purple-700 {
-          --tw-gradient-via: #7e22ce;
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-via),
-            var(--tw-gradient-to, rgba(126, 34, 206, 0));
-        }
-        .to-indigo-800 {
-          --tw-gradient-to: #3730a3;
-        }
-        .text-white {
-          color: white;
-        }
-        .font-sans {
-          font-family: ui-sans-serif, system-ui, sans-serif;
-        }
-        .overflow-hidden {
-          overflow: hidden;
-        }
-
-        /* Width classes */
-        .w-1 4 {
-          width: 25%;
-        }
-        .w-2 4 {
-          width: 50%;
-        }
-        .w-full {
-          width: 100%;
-        }
-        .max-w-md {
-          max-width: 28rem;
-        }
-        .max-w-lg {
-          max-width: 32rem;
-        }
-        .max-w-2xl {
-          max-width: 42rem;
-        }
-
-        /* Height classes */
-        .h-1 {
-          height: 0.25rem;
-        }
-        .h-2 {
-          height: 0.5rem;
-        }
-        .h-4 {
-          height: 1rem;
-        }
-        .h-5 {
-          height: 1.25rem;
-        }
-        .h-6 {
-          height: 1.5rem;
-        }
-        .h-20 {
-          height: 5rem;
-        }
-        .h-40 {
-          height: 10rem;
-        }
-        .h-full {
-          height: 100%;
-        }
-        .min-h-32 {
-          min-height: 8rem;
-        }
-        .max-h-\\[80vh\\] {
-          max-height: 80vh;
-        }
-        .max-h-\\[calc\\(100vh-400px\\)\\] {
-          max-height: calc(100vh - 400px);
-        }
-
-        /* Padding classes */
-        .p-1 {
-          padding: 0.25rem;
-        }
-        .p-2 {
-          padding: 0.5rem;
-        }
-        .p-3 {
-          padding: 0.75rem;
-        }
-        .p-4 {
-          padding: 1rem;
-        }
-        .p-6 {
-          padding: 1.5rem;
-        }
-        .p-8 {
-          padding: 2rem;
-        }
-        .px-4 {
-          padding-left: 1rem;
-          padding-right: 1rem;
-        }
-        .px-8 {
-          padding-left: 2rem;
-          padding-right: 2rem;
-        }
-        .py-2 {
-          padding-top: 0.5rem;
-          padding-bottom: 0.5rem;
-        }
-        .py-4 {
-          padding-top: 1rem;
-          padding-bottom: 1rem;
-        }
-        .py-6 {
-          padding-top: 0.5rem;
-          padding-bottom: 1.5rem;
-        }
-        .pb-6 {
-          padding-bottom: 1.5rem;
-        }
-        .pt-5 {
-          padding-top: 1.25rem;
-        }
-
-        /* Margin classes */
-        .m-0 {
-          margin: 0;
-        }
-        .mb-1 {
-          margin-bottom: 0.25rem;
-        }
-        .mb-2 {
-          margin-bottom: 0.5rem;
-        }
-        .mb-3 {
-          margin-bottom: 0.75rem;
-        }
-        .mb-4 {
-          margin-bottom: 1rem;
-        }
-        .mb-6 {
-          margin-bottom: 1.5rem;
-        }
-        .mb-10 {
-          margin-bottom: 2.5rem;
-        }
-        .mr-1 {
-          margin-right: 0.25rem;
-        }
-        .mr-2 {
-          margin-right: 0.5rem;
-        }
-        .mt-1 {
-          margin-top: 0.25rem;
-        }
-        .mt-2 {
-          margin-top: 0.5rem;
-        }
-        .mt-4 {
-          margin-top: 1rem;
-        }
-        .mt-6 {
-          margin-top: 1.5rem;
-        }
-        .mt-8 {
-          margin-top: 2rem;
-        }
-        .mt-10 {
-          margin-top: 2.5rem;
-        }
-
-        /* Background classes */
-        .bg-transparent {
-          background-color: transparent;
-        }
-        .bg-black {
-          background-color: black;
-        }
-        .bg-white l5 {
-          background-color: rgba(255, 255, 255, 0.05);
-        }
-        .bg-white 10 {
-          background-color: rgba(255, 255, 255, 0.1);
-        }
-        .bg-white 15 {
-          background-color: rgba(255, 255, 255, 0.15);
-        }
-        .bg-white 20 {
-          background-color: rgba(255, 255, 255, 0.2);
-        }
-        .bg-black 20 {
-          background-color: rgba(0, 0, 0, 0.2);
-        }
-        .bg-black 30 {
-          background-color: rgba(0, 0, 0, 0.3);
-        }
-        .bg-black 40 {
-          background-color: rgba(0, 0, 0, 0.4);
-        }
-        .bg-black 70 {
-          background-color: rgba(0, 0, 0, 0.7);
-        }
-        .bg-black 80 {
-          background-color: rgba(0, 0, 0, 0.8);
-        }
-        .bg-red-500 20 {
-          background-color: rgba(239, 68, 68, 0.2);
-        }
-        .bg-green-500 20 {
-          background-color: rgba(34, 197, 94, 0.2);
-        }
-        .bg-pink-500 20 {
-          background-color: rgba(236, 72, 153, 0.2);
-        }
-        .bg-purple-500 20 {
-          background-color: rgba(168, 85, 247, 0.2);
-        }
-        .bg-gray-700 50 {
-          background-color: rgba(55, 65, 81, 0.5);
-        }
-        .bg-red-600 {
-          background-color: #dc2626;
-        }
-        .bg-green-600 80 {
-          background-color: rgba(22, 163, 74, 0.8);
-        }
-
-        /* Border classes */
-        .border {
-          border-width: 1px;
-        }
-        .border-0 {
-          border-width: 0;
-        }
-        .border-2 {
-          border-width: 2px;
-        }
-        .border-t-2 {
-          border-top-width: 2px;
-        }
-        .border-r-2 {
-          border-right-width: 2px;
-        }
-        .border-b-2 {
-          border-bottom-width: 2px;
-        }
-        .border-l-4 {
-          border-left-width: 4px;
-        }
-        .border-dashed {
-          border-style: dashed;
-        }
-        .border-solid {
-          border-style: solid;
-        }
-        .border-white {
-          border-color: white;
-        }
-        .border-white 0 {
-          border-color: rgba(255, 255, 255, 0);
-        }
-        .border-white/10 {
-          border-color: rgba(255, 255, 255, 0.1);
-        }
-        .border-white 20 {
-          border-color: rgba(255, 255, 255, 0.2);
-        }
-        .border-pink-500 {
-          border-color: #ec4899;
-        }
-        .border-pink-50050 {
-          border-color: rgba(236, 72, 153, 0.5);
-        }
-        .border-green-500 30 {
-          border-color: rgba(34, 197, 94, 0.3);
-        }
-
-        /* Text classes */
-        .text-xs {
-          font-size: 0.75rem;
-        }
-        .text-sm {
-          font-size: 0.875rem;
-        }
-        .text-lg {
-          font-size: 1.125rem;
-        }
-        .text-xl {
-          font-size: 1.25rem;
-        }
-        .text-2xl {
-          font-size: 1.5rem;
-        }
-        .text-3xl {
-          font-size: 1.875rem;
-        }
-        .text-4xl {
-          font-size: 2.25rem;
-        }
-        .font-medium {
-          font-weight: 500;
-        }
-        .font-semibold {
-          font-weight: 600;
-        }
-        .font-bold {
-          font-weight: 700;
-        }
-        .italic {
-          font-style: italic;
-        }
-        .text-center {
-          text-align: center;
-        }
-        .text-left {
-          text-align: left;
-        }
-        .text-right {
-          text-align: right;
-        }
-        .text-transparent {
-          color: transparent;
-        }
-        .text-white 40 {
-          color: rgba(255, 255, 255, 0.4);
-        }
-        .text-white 50 {
-          color: rgba(255, 255, 255, 0.5);
-        }
-        .text-white60 {
-          color: rgba(255, 255, 255, 0.6);
-        }
-        .text-white 70 {
-          color: rgba(255, 255, 255, 0.7);
-        }
-        .text-white 80 {
-          color: rgba(255, 255, 255, 0.8);
-        }
-        .text-white90 {
-          color: rgba(255, 255, 255, 0.9);
-        }
-        .text-red-100 {
-          color: #fee2e2;
-        }
-        .text-green-100 {
-          color: #dcfce7;
-        }
-        .text-red-400 {
-          color: #f87171;
-        }
-        .underline {
-          text-decoration: underline;
-        }
-
-        /* Flex classes */
-        .flex-1 {
-          flex: 1 1 0%;
-        }
-        .flex-col {
-          flex-direction: column;
-        }
-        .items-center {
-          align-items: center;
-        }
-        .justify-between {
-          justify-content: space-between;
-        }
-        .justify-center {
-          justify-content: center;
-        }
-        .justify-end {
-          justify-content: flex-end;
-        }
-        .space-y-2 > * + * {
-          margin-top: 0.5rem;
-        }
-        .space-y-4 > * + * {
-          margin-top: 1rem;
-        }
-
-        /* Gradient classes */
-        .bg-gradient-to-r {
-          background-image: linear-gradient(to right, var(--tw-gradient-stops));
-        }
-        .bg-gradient-to-b {
-          background-image: linear-gradient(
-            to bottom,
-            var(--tw-gradient-stops)
-          );
-        }
-        .from-pink-300 {
-          --tw-gradient-from: #f9a8d4;
-          --tw-gradient-stops:
-            var(--tw-gradient-from),
-            var(--tw-gradient-to, rgba(249, 168, 212, 0));
-        }
-        .from-red-300 {
-          --tw-gradient-from: #fca5a5;
-          --tw-gradient-stops:
-            var(--tw-gradient-from),
-            var(--tw-gradient-to, rgba(252, 165, 165, 0));
-        }
-        .from-orange-300 {
-          --tw-gradient-from: #fdba74;
-          --tw-gradient-stops:
-            var(--tw-gradient-from),
-            var(--tw-gradient-to, rgba(253, 186, 116, 0));
-        }
-        .from-pink-500 {
-          --tw-gradient-from: #ec4899;
-          --tw-gradient-stops:
-            var(--tw-gradient-from),
-            var(--tw-gradient-to, rgba(236, 72, 153, 0));
-        }
-        .from-pink-600 {
-          --tw-gradient-from: #db2777;
-          --tw-gradient-stops:
-            var(--tw-gradient-from),
-            var(--tw-gradient-to, rgba(219, 39, 119, 0));
-        }
-        .from-blue-600 {
-          --tw-gradient-from: #2563eb;
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(37, 99, 235, 0));
-        }
-        .from-blue-700 {
-          --tw-gradient-from: #1d4ed8;
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(29, 78, 216, 0));
-        }
-        .from-green-600 {
-          --tw-gradient-from: #16a34a;
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(22, 163, 74, 0));
-        }
-        .from-green-700 {
-          --tw-gradient-from: #15803d;
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(21, 128, 61, 0));
-        }
-        .from-green-900 40 {
-          --tw-gradient-from: rgba(20, 83, 45, 0.4);
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(20, 83, 45, 0));
-        }
-        .from-green-900 60 {
-          --tw-gradient-from: rgba(20, 83, 45, 0.6);
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(20, 83, 45, 0));
-        }
-        .from-gray-900 {
-          --tw-gradient-from: #111827;
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(17, 24, 39, 0));
-        }
-        .from-red-600 {
-          --tw-gradient-from: #dc2626;
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(220, 38, 38, 0));
-        }
-        .from-indigo-900 90 {
-          --tw-gradient-from: rgba(49, 46, 129, 0.9);
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(49, 46, 129, 0));
-        }
-        .to-black {
-          --tw-gradient-to: #000000;
-        }
-        .to-pink-300 {
-          --tw-gradient-to: #f9a8d4;
-        }
-        .to-red-800 {
-          --tw-gradient-to: #991b1b;
-        }
-        .to-blue-800 {
-          --tw-gradient-to: #1e40af;
-        }
-        .to-blue-900 {
-          --tw-gradient-to: #1e3a8a;
-        }
-        .to-green-800 {
-          --tw-gradient-to: #166534;
-        }
-        .to-green-800 40 {
-          --tw-gradient-to: rgba(22, 101, 52, 0.4);
-        }
-        .to-green-800 60 {
-          --tw-gradient-to: rgba(22, 101, 52, 0.6);
-        }
-        .to-green-900 {
-          --tw-gradient-to: #14532d;
-        }
-        .to-purple-300 {
-          --tw-gradient-to: #d8b4fe;
-        }
-        .to-purple-600 {
-          --tw-gradient-to: #9333ea;
-        }
-        .to-purple-700 {
-          --tw-gradient-to: #7e22ce;
-        }
-        .to-purple-900 90 {
-          --tw-gradient-to: rgba(88, 28, 135, 0.9);
-        }
-        .bg-clip-text {
-          -webkit-background-clip: text;
-          background-clip: text;
-        }
-
-        /* Positioning */
-        .relative {
-          position: relative;
-        }
-        .absolute {
-          position: absolute;
-        }
-        .fixed {
-          position: fixed;
-        }
-        .inset-0 {
-          top: 0;
-          right: 0;
-          bottom: 0;
-          left: 0;
-        }
-        .top-0 {
-          top: 0;
-        }
-        .right-0 {
-          right: 0;
-        }
-        .bottom-0 {
-          bottom: 0;
-        }
-        .left-0 {
-          left: 0;
-        }
-        .top-4 {
-          top: 1rem;
-        }
-        .right-4 {
-          right: 1rem;
-        }
-        .top-\\[2px\\] {
-          top: 2px;
-        }
-        .left-\\[2px\\] {
-          left: 2px;
-        }
-        .-top-20 {
-          top: -5rem;
-        }
-        .-left-20 {
-          left: -5rem;
-        }
-        .-bottom-20 {
-          bottom: -5rem;
-        }
-        .-right-20 {
-          right: -5rem;
-        }
-        .z-10 {
-          z-index: 10;
-        }
-        .z-50 {
-          z-index: 50;
-        }
-
-        /* Rounded corners */
-        .rounded {
-          border-radius: 0.25rem;
-        }
-        .rounded-none {
-          border-radius: 0;
-        }
-        .rounded-lg {
-          border-radius: 0.5rem;
-        }
-        .rounded-t-lg {
-          border-top-left-radius: 0.5rem;
-          border-top-right-radius: 0.5rem;
-        }
-        .rounded-b-lg {
-          border-bottom-left-radius: 0.5rem;
-          border-bottom-right-radius: 0.5rem;
-        }
-        .rounded-l-lg {
-          border-top-left-radius: 0.5rem;
-          border-bottom-left-radius: 0.5rem;
-        }
-        .rounded-r-lg {
-          border-top-right-radius: 0.5rem;
-          border-bottom-right-radius: 0.5rem;
-        }
-        .rounded-full {
-          border-radius: 9999px;
-        }
-
-        /* Shadow */
-        .shadow-lg {
-          box-shadow:
-            0 10px 15px -3px rgba(0, 0, 0, 0.1),
-            0 4px 6px -4px rgba(0, 0, 0, 0.1);
-        }
-        .shadow-red-700 30 {
-          --tw-shadow-color: rgba(185, 28, 28, 0.3);
-          box-shadow:
-            var(--tw-ring-offset-shadow, 0 0 #0000),
-            var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-        }
-        .shadow-purple-700 20 {
-          --tw-shadow-color: rgba(126, 34, 206, 0.2);
-          box-shadow:
-            var(--tw-ring-offset-shadow, 0 0 #0000),
-            var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-        }
-
-        /* Transitions */
-        .transition {
-          transition-property:
-            color, background-color, border-color, text-decoration-color, fill,
-            stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-          transition-duration: 150ms;
-        }
-        .transition-all {
-          transition-property: all;
-          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-          transition-duration: 150ms;
-        }
-        .transition-colors {
-          transition-property:
-            color, background-color, border-color, text-decoration-color, fill,
-            stroke;
-          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-          transition-duration: 150ms;
-        }
-        .duration-300 {
-          transition-duration: 300ms;
-        }
-        .duration-500 {
-          transition-duration: 500ms;
-        }
-
-        /* Transforms */
-        .transform {
-          transform: translate(var(--tw-translate-x), var(--tw-translate-y))
-            rotate(var(--tw-rotate)) skewX(var(--tw-skew-x))
-            skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x))
-            scaleY(var(--tw-scale-y));
-        }
-        .scale-105 {
-          --tw-scale-x: 1.05;
-          --tw-scale-y: 1.05;
-        }
-        .hover\\:scale-105:hover {
-          --tw-scale-x: 1.05;
-          --tw-scale-y: 1.05;
-        }
-        .after\\:translate-x-full::after {
-          --tw-translate-x: 100%;
-          transform: translate(var(--tw-translate-x), var(--tw-translate-y))
-            rotate(var(--tw-rotate)) skewX(var(--tw-skew-x))
-            skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x))
-            scaleY(var(--tw-scale-y));
-        }
-
-        /* Blur */
-        .backdrop-blur-sm {
-          backdrop-filter: blur(4px);
-        }
-        .blur-3xl {
-          filter: blur(64px);
-        }
-
-        /* Overflow */
-        .overflow-y-auto {
-          overflow-y: auto;
-        }
-        .overflow-x-auto {
-          overflow-x: auto;
-        }
-
-        /* Cursor */
-        .cursor-pointer {
-          cursor: pointer;
-        }
-        .cursor-not-allowed {
-          cursor: not-allowed;
-        }
-
-        /* Display */
-        .hidden {
-          display: none;
-        }
-        .block {
-          display: block;
-        }
-        .inline-flex {
-          display: inline-flex;
-        }
-
-        /* Focus */
-        .focus\\:outline-none:focus {
-          outline: 2px solid transparent;
-          outline-offset: 2px;
-        }
-        .focus\\:ring-2:focus {
-          --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0
-            var(--tw-ring-offset-width) var(--tw-ring-offset-color);
-          --tw-ring-shadow: var(--tw-ring-inset) 0 0 0
-            calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
-          box-shadow:
-            var(--tw-ring-offset-shadow), var(--tw-ring-shadow),
-            var(--tw-shadow, 0 0 #0000);
-        }
-        .focus\\:ring-pink-500:focus {
-          --tw-ring-color: #ec4899;
-        }
-        .peer-focus\\:outline-none:focus {
-          outline: 2px solid transparent;
-          outline-offset: 2px;
-        }
-
-        /* Hover states */
-        .hover\\:bg-red-700:hover {
-          background-color: #b91c1c;
-        }
-        .hover\\:bg-white\\/10:hover {
-          background-color: rgba(255, 255, 255, 0.1);
-        }
-        .hover\\:bg-white\\/15:hover {
-          background-color: rgba(255, 255, 255, 0.15);
-        }
-        .hover\\:border-white\\/20:hover {
-          border-color: rgba(255, 255, 255, 0.2);
-        }
-        .hover\\:text-white:hover {
-          color: white;
-        }
-        .hover\\:text-red-400:hover {
-          color: #f87171;
-        }
-        .hover\\:from-pink-600:hover {
-          --tw-gradient-from: #db2777;
-          --tw-gradient-stops:
-            var(--tw-gradient-from),
-            var(--tw-gradient-to, rgba(219, 39, 119, 0));
-        }
-        .hover\\:from-blue-700:hover {
-          --tw-gradient-from: #1d4ed8;
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(29, 78, 216, 0));
-        }
-        .hover\\:from-green-700:hover {
-          --tw-gradient-from: #15803d;
-          --tw-gradient-stops:
-            var(--tw-gradient-from), var(--tw-gradient-to, rgba(21, 128, 61, 0));
-        }
-        .hover\\:to-purple-700:hover {
-          --tw-gradient-to: #7e22ce;
-        }
-        .hover\\:to-blue-900:hover {
-          --tw-gradient-to: #1e3a8a;
-        }
-        .hover\\:to-green-900:hover {
-          --tw-gradient-to: #14532d;
-        }
-
-        /* Animations */
-        .animate-pulse {
-          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        .animate-bounce {
-          animation: bounce 1s infinite;
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.5s ease-in;
+        .text-shadow-lg {
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
 
         @keyframes pulse {
@@ -1486,18 +1529,6 @@ const StreamingApp = () => {
           }
         }
 
-        @keyframes bounce {
-          0%,
-          100% {
-            transform: translateY(-25%);
-            animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
-          }
-          50% {
-            transform: translateY(0);
-            animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-          }
-        }
-
         @keyframes fadeIn {
           0% {
             opacity: 0;
@@ -1507,7 +1538,14 @@ const StreamingApp = () => {
           }
         }
 
-        /* Custom styles */
+        .animate-pulse {
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .animate-fade-in {
+          animation: fadeIn 0.5s ease-in;
+        }
+
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
         }
@@ -1524,51 +1562,6 @@ const StreamingApp = () => {
 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* Prose styles for the modal */
-        .prose {
-          color: inherit;
-          max-width: 65ch;
-          font-size: 1rem;
-          line-height: 1.75;
-        }
-
-        .prose h3 {
-          font-weight: 600;
-          margin-top: 1.5em;
-          margin-bottom: 0.5em;
-          font-size: 1.25rem;
-        }
-
-        .prose-invert {
-          color: rgba(255, 255, 255, 0.9);
-        }
-
-        .prose ol,
-        .prose ul {
-          padding-left: 1.25rem;
-        }
-
-        .prose li {
-          margin-top: 0.25em;
-          margin-bottom: 0.25em;
-        }
-
-        .after\\:content-\\[\\'\\'\\]::after {
-          content: "";
-        }
-
-        .peer-checked\\:after\\:translate-x-full:checked::after {
-          --tw-translate-x: 100%;
-          transform: translate(var(--tw-translate-x), var(--tw-translate-y))
-            rotate(var(--tw-rotate)) skewX(var(--tw-skew-x))
-            skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x))
-            scaleY(var(--tw-scale-y));
-        }
-
-        .peer-checked\\:bg-green-600\\/80:checked {
-          background-color: rgba(22, 163, 74, 0.8);
         }
       `}</style>
     </div>
