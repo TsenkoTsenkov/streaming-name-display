@@ -1,8 +1,13 @@
+import App from './pages/App';
 import { render, screen } from '@testing-library/react';
-import App from './App';
+import { AppProvider } from './context/AppContext';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+test('renders streaming display title', () => {
+  render(
+    <AppProvider>
+      <App />
+    </AppProvider>
+  );
+  const titleElement = screen.getByText(/streaming display/i);
+  expect(titleElement).toBeInTheDocument();
 });
