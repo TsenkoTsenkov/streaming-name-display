@@ -8,7 +8,6 @@ import {
   AlertCircle,
   Edit,
   Save,
-  Eye,
   Sliders,
   ChevronRight,
   Video,
@@ -16,8 +15,10 @@ import {
   Type,
   Monitor,
   HelpCircle,
+  Maximize,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import * as XLSX from "sheetjs";
 
 // This component represents what would be displayed on the separate display page
 const DisplayView = ({ person, settings }) => {
@@ -114,8 +115,9 @@ const DisplayView = ({ person, settings }) => {
     borderRadius: "0.5rem",
     padding: "1.5rem",
     textAlign: "center",
-    width: "100%",
-    maxWidth: "28rem",
+    width: settings.displayWidth ? `${settings.displayWidth}px` : "100%",
+    maxWidth: settings.displayWidth ? `${settings.displayWidth}px` : "28rem",
+    height: settings.displayHeight ? `${settings.displayHeight}px` : "auto",
     transition: "all 0.5s",
     position: "relative",
     overflow: "hidden",
@@ -127,7 +129,7 @@ const DisplayView = ({ person, settings }) => {
   };
 
   const nameStyles = {
-    fontSize: "1.875rem",
+    fontSize: settings.fontSize ? `${settings.fontSize}px` : "1.875rem",
     color: "white",
     marginBottom: "0.5rem",
     position: "relative",
@@ -137,7 +139,9 @@ const DisplayView = ({ person, settings }) => {
   };
 
   const titleStyles = {
-    fontSize: "1.25rem",
+    fontSize: settings.titleFontSize
+      ? `${settings.titleFontSize}px`
+      : "1.25rem",
     color: "rgba(255, 255, 255, 0.9)",
     fontStyle: "italic",
     position: "relative",
@@ -201,6 +205,9 @@ const DisplayView = ({ person, settings }) => {
 };
 
 const StreamingApp = () => {
+  // Reference for the drag-drop area
+  const dropAreaRef = useRef(null);
+
   // Check if we're in display mode from the URL
   const isDisplayMode = useMemo(() => {
     return window.location.search.includes("display=true");
@@ -272,6 +279,10 @@ const StreamingApp = () => {
       textShadow: true,
       boxShadow: true,
       decorativeElements: true,
+      displayWidth: 400, // Default width in pixels
+      displayHeight: 120, // Default height in pixels
+      fontSize: 30, // Default font size in pixels
+      titleFontSize: 20, // Default title font size in pixels
     };
   };
 
@@ -295,6 +306,7 @@ const StreamingApp = () => {
   const [currentTab, setCurrentTab] = useState("people"); // people, appearance, preview
   const [previewWindow, setPreviewWindow] = useState(null);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
   // For demo purposes, generate a display URL
   const displayUrl = window.location.href.split("?")[0] + "?display=true";
@@ -322,7 +334,52 @@ const StreamingApp = () => {
     }
   }, [displaySettings]);
 
-  // Handle selecting a person
+  // Handle drag events for file upload
+  useEffect(() => {
+    const handleDragOver = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handleDragEnter = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(true);
+    };
+
+    const handleDragLeave = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+    };
+
+    const handleDrop = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleExcelFile(e.dataTransfer.files[0]);
+      }
+    };
+
+    const dropArea = dropAreaRef.current;
+    if (dropArea) {
+      dropArea.addEventListener("dragover", handleDragOver);
+      dropArea.addEventListener("dragenter", handleDragEnter);
+      dropArea.addEventListener("dragleave", handleDragLeave);
+      dropArea.addEventListener("drop", handleDrop);
+
+      return () => {
+        dropArea.removeEventListener("dragover", handleDragOver);
+        dropArea.removeEventListener("dragenter", handleDragEnter);
+        dropArea.removeEventListener("dragleave", handleDragLeave);
+        dropArea.removeEventListener("drop", handleDrop);
+      };
+    }
+  });
+
+  // Handle selecting a person - now triggered by clicking the card
   const handleSelectPerson = (id) => {
     setPeople(
       people.map((person) => ({
@@ -425,6 +482,17 @@ const StreamingApp = () => {
     });
   };
 
+  // Handle size changes
+  const handleSizeChange = (setting, value) => {
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue)) {
+      setDisplaySettings({
+        ...displaySettings,
+        [setting]: numValue,
+      });
+    }
+  };
+
   // Handle toggling display view with animation
   const handleDisplayToggle = () => {
     setIsDisplayActive(!isDisplayActive);
@@ -444,8 +512,8 @@ const StreamingApp = () => {
 
   // Open a new window with the display
   const handleOpenDisplayWindow = () => {
-    const width = 800;
-    const height = 200;
+    const width = displaySettings.displayWidth || 800;
+    const height = displaySettings.displayHeight || 200;
     const left = (window.screen.width - width) / 2;
     const top = (window.screen.height - height) / 2;
     const features = `width=${width},height=${height},left=${left},top=${top}`;
@@ -460,55 +528,116 @@ const StreamingApp = () => {
     setPreviewWindow(newWindow);
   };
 
-  // Handle file upload
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
+  // Process the Excel file
+  const handleExcelFile = async (file) => {
     if (!file) return;
 
     setIsUploading(true);
     setUploadStatus(null);
 
     try {
-      // Since we can't actually read Excel files in this demo,
-      // we'll just pretend we uploaded some data
-      setTimeout(() => {
-        const mockData = [
-          { Name: "John", Surname: "Doe", Title: "Guest Speaker" },
-          { Name: "Jane", Surname: "Smith", Title: "Host" },
-          { Name: "Mike", Surname: "Johnson", Title: "Panelist" },
-        ];
+      // Read the file
+      const reader = new FileReader();
 
-        // Map Excel data to our people structure
-        const newPeople = mockData.map((row, index) => {
-          return {
-            id: Math.max(...people.map((p) => p.id), 0) + index + 1,
-            name: row.Name || `Person ${index + 1}`,
-            surname: row.Surname || "",
-            title: row.Title || "",
-            selected: false,
-            streaming: false,
-          };
-        });
+      reader.onload = (e) => {
+        try {
+          // Parse the Excel file
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
 
-        // Add new people to our list
-        setPeople([...people, ...newPeople]);
-        setUploadStatus({
-          success: true,
-          message: `Successfully imported ${newPeople.length} people from Excel`,
-        });
+          // Get the first sheet
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
 
+          // Convert to JSON
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+          if (jsonData.length > 0) {
+            // Map Excel data to our people structure
+            // Try different possible column names for flexibility
+            const newPeople = jsonData.map((row, index) => {
+              // Try to find the right column names
+              const nameField =
+                row.Name ||
+                row.name ||
+                row.NAME ||
+                row.FirstName ||
+                row.firstname ||
+                row["First Name"] ||
+                "";
+              const surnameField =
+                row.Surname ||
+                row.surname ||
+                row.SURNAME ||
+                row.LastName ||
+                row.lastname ||
+                row["Last Name"] ||
+                "";
+              const titleField =
+                row.Title ||
+                row.title ||
+                row.TITLE ||
+                row.Role ||
+                row.role ||
+                row.Position ||
+                row.position ||
+                "";
+
+              return {
+                id: Math.max(...people.map((p) => p.id), 0) + index + 1,
+                name: nameField,
+                surname: surnameField,
+                title: titleField,
+                selected: false,
+                streaming: false,
+              };
+            });
+
+            // Add new people to our list
+            setPeople([...people, ...newPeople]);
+            setUploadStatus({
+              success: true,
+              message: `Successfully imported ${newPeople.length} people from Excel`,
+            });
+          } else {
+            throw new Error("No data found in Excel file");
+          }
+        } catch (error) {
+          console.error("Error processing Excel file:", error);
+          setUploadStatus({
+            success: false,
+            message: `Error processing the file: ${error.message}`,
+          });
+        }
         setIsUploading(false);
-      }, 1000);
+      };
+
+      reader.onerror = () => {
+        setUploadStatus({
+          success: false,
+          message: "Error reading the file",
+        });
+        setIsUploading(false);
+      };
+
+      // Read the file as an array buffer
+      reader.readAsArrayBuffer(file);
     } catch (error) {
-      console.error("Error processing Excel file:", error);
+      console.error("Error handling file:", error);
       setUploadStatus({
         success: false,
-        message:
-          "Error processing the file. Make sure it's a valid Excel spreadsheet.",
+        message: `Error handling the file: ${error.message}`,
       });
       setIsUploading(false);
     }
+  };
 
+  // Handle file upload from input
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      handleExcelFile(file);
+    }
     // Reset the file input
     event.target.value = "";
   };
@@ -643,6 +772,7 @@ const StreamingApp = () => {
       : person.streaming
         ? "1px solid rgba(34, 197, 94, 0.5)"
         : "1px solid rgba(255, 255, 255, 0.1)",
+    cursor: "pointer", // Add cursor pointer to indicate it's clickable
   });
 
   // Button styles
@@ -873,7 +1003,7 @@ const StreamingApp = () => {
     marginTop: "1rem",
   };
 
-  // Upload area styles
+  // Upload area styles - enhanced for drag and drop
   const uploadAreaStyles = {
     display: "flex",
     flexDirection: "column",
@@ -881,11 +1011,15 @@ const StreamingApp = () => {
     justifyContent: "center",
     width: "100%",
     height: "5rem",
-    border: "2px dashed rgba(255, 255, 255, 0.2)",
+    border: dragActive
+      ? "2px dashed #3B82F6"
+      : "2px dashed rgba(255, 255, 255, 0.2)",
     borderRadius: "0.5rem",
     cursor: "pointer",
-    backgroundColor: "rgba(31, 41, 55, 0.5)",
-    transition: "background-color 0.2s",
+    backgroundColor: dragActive
+      ? "rgba(59, 130, 246, 0.1)"
+      : "rgba(31, 41, 55, 0.5)",
+    transition: "all 0.3s",
   };
 
   // Modal overlay styles
@@ -1029,7 +1163,11 @@ const StreamingApp = () => {
                 </div>
               ) : (
                 people.map((person) => (
-                  <div key={person.id} style={getPersonCardStyles(person)}>
+                  <div
+                    key={person.id}
+                    style={getPersonCardStyles(person)}
+                    onClick={() => handleSelectPerson(person.id)} // Make the entire card clickable for selection
+                  >
                     {editingId === person.id ? (
                       // Edit mode
                       <div
@@ -1038,6 +1176,7 @@ const StreamingApp = () => {
                           flexDirection: "column",
                           gap: "0.5rem",
                         }}
+                        onClick={(e) => e.stopPropagation()} // Prevent selection when editing
                       >
                         <input
                           type="text"
@@ -1121,22 +1260,9 @@ const StreamingApp = () => {
                             alignItems: "center",
                             marginTop: "0.75rem",
                           }}
+                          onClick={(e) => e.stopPropagation()} // Prevent selection when clicking buttons
                         >
                           <div style={{ display: "flex", gap: "0.5rem" }}>
-                            <button
-                              onClick={() => handleSelectPerson(person.id)}
-                              style={
-                                person.selected
-                                  ? buttonStyles.primary
-                                  : buttonStyles.secondary
-                              }
-                            >
-                              <Eye
-                                size={14}
-                                style={{ marginRight: "0.25rem" }}
-                              />{" "}
-                              Select
-                            </button>
                             <button
                               onClick={() => handleStreamPerson(person.id)}
                               style={
@@ -1248,7 +1374,7 @@ const StreamingApp = () => {
               </div>
             </div>
 
-            {/* Excel Import */}
+            {/* Excel Import with Drag & Drop */}
             <div style={importContainerStyles}>
               <h3
                 style={{
@@ -1269,7 +1395,7 @@ const StreamingApp = () => {
                 Upload an Excel sheet with columns for Name, Surname, and Title
               </p>
 
-              <label style={uploadAreaStyles}>
+              <div ref={dropAreaRef} style={uploadAreaStyles}>
                 <div
                   style={{
                     display: "flex",
@@ -1284,17 +1410,25 @@ const StreamingApp = () => {
                       width: "1.5rem",
                       height: "1.5rem",
                       marginBottom: "0.25rem",
-                      color: "rgba(255, 255, 255, 0.7)",
+                      color: dragActive
+                        ? "#3B82F6"
+                        : "rgba(255, 255, 255, 0.7)",
                       animation: isUploading ? "bounce 1s infinite" : "none",
                     }}
                   />
                   <p
                     style={{
                       fontSize: "0.875rem",
-                      color: "rgba(255, 255, 255, 0.7)",
+                      color: dragActive
+                        ? "#3B82F6"
+                        : "rgba(255, 255, 255, 0.7)",
                     }}
                   >
-                    <span style={{ fontWeight: "600" }}>Click to upload</span>
+                    <span style={{ fontWeight: "600" }}>
+                      {dragActive
+                        ? "Drop file here"
+                        : "Drag & drop or click to upload"}
+                    </span>
                   </p>
                 </div>
                 <input
@@ -1304,7 +1438,7 @@ const StreamingApp = () => {
                   onChange={handleFileUpload}
                   disabled={isUploading}
                 />
-              </label>
+              </div>
 
               {uploadStatus && (
                 <div
@@ -1344,6 +1478,198 @@ const StreamingApp = () => {
           <div
             style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
           >
+            {/* Sizing Settings */}
+            <div style={settingsSectionStyles}>
+              <h3 style={{ ...settingsHeadingStyles, color: "white" }}>
+                <Maximize
+                  size={18}
+                  style={{ marginRight: "0.5rem", color: "#C084FC" }}
+                />{" "}
+                Size Settings
+              </h3>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "auto 1fr",
+                  gap: "0.75rem 1rem",
+                  alignItems: "center",
+                }}
+              >
+                <label style={{ color: "rgba(255, 255, 255, 0.8)" }}>
+                  Width:
+                </label>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <input
+                    type="range"
+                    min="200"
+                    max="800"
+                    value={displaySettings.displayWidth || 400}
+                    onChange={(e) =>
+                      handleSizeChange("displayWidth", e.target.value)
+                    }
+                    style={{ flex: 1, marginRight: "0.5rem" }}
+                  />
+                  <input
+                    type="number"
+                    min="200"
+                    max="800"
+                    value={displaySettings.displayWidth || 400}
+                    onChange={(e) =>
+                      handleSizeChange("displayWidth", e.target.value)
+                    }
+                    style={{
+                      width: "60px",
+                      padding: "0.25rem",
+                      textAlign: "center",
+                      backgroundColor: "#1F2937",
+                      color: "white",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "0.25rem",
+                    }}
+                  />
+                  <span
+                    style={{
+                      marginLeft: "0.25rem",
+                      fontSize: "0.875rem",
+                      color: "rgba(255, 255, 255, 0.6)",
+                    }}
+                  >
+                    px
+                  </span>
+                </div>
+
+                <label style={{ color: "rgba(255, 255, 255, 0.8)" }}>
+                  Height:
+                </label>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <input
+                    type="range"
+                    min="80"
+                    max="400"
+                    value={displaySettings.displayHeight || 120}
+                    onChange={(e) =>
+                      handleSizeChange("displayHeight", e.target.value)
+                    }
+                    style={{ flex: 1, marginRight: "0.5rem" }}
+                  />
+                  <input
+                    type="number"
+                    min="80"
+                    max="400"
+                    value={displaySettings.displayHeight || 120}
+                    onChange={(e) =>
+                      handleSizeChange("displayHeight", e.target.value)
+                    }
+                    style={{
+                      width: "60px",
+                      padding: "0.25rem",
+                      textAlign: "center",
+                      backgroundColor: "#1F2937",
+                      color: "white",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "0.25rem",
+                    }}
+                  />
+                  <span
+                    style={{
+                      marginLeft: "0.25rem",
+                      fontSize: "0.875rem",
+                      color: "rgba(255, 255, 255, 0.6)",
+                    }}
+                  >
+                    px
+                  </span>
+                </div>
+
+                <label style={{ color: "rgba(255, 255, 255, 0.8)" }}>
+                  Name Size:
+                </label>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <input
+                    type="range"
+                    min="16"
+                    max="60"
+                    value={displaySettings.fontSize || 30}
+                    onChange={(e) =>
+                      handleSizeChange("fontSize", e.target.value)
+                    }
+                    style={{ flex: 1, marginRight: "0.5rem" }}
+                  />
+                  <input
+                    type="number"
+                    min="16"
+                    max="60"
+                    value={displaySettings.fontSize || 30}
+                    onChange={(e) =>
+                      handleSizeChange("fontSize", e.target.value)
+                    }
+                    style={{
+                      width: "60px",
+                      padding: "0.25rem",
+                      textAlign: "center",
+                      backgroundColor: "#1F2937",
+                      color: "white",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "0.25rem",
+                    }}
+                  />
+                  <span
+                    style={{
+                      marginLeft: "0.25rem",
+                      fontSize: "0.875rem",
+                      color: "rgba(255, 255, 255, 0.6)",
+                    }}
+                  >
+                    px
+                  </span>
+                </div>
+
+                <label style={{ color: "rgba(255, 255, 255, 0.8)" }}>
+                  Title Size:
+                </label>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <input
+                    type="range"
+                    min="12"
+                    max="40"
+                    value={displaySettings.titleFontSize || 20}
+                    onChange={(e) =>
+                      handleSizeChange("titleFontSize", e.target.value)
+                    }
+                    style={{ flex: 1, marginRight: "0.5rem" }}
+                  />
+                  <input
+                    type="number"
+                    min="12"
+                    max="40"
+                    value={displaySettings.titleFontSize || 20}
+                    onChange={(e) =>
+                      handleSizeChange("titleFontSize", e.target.value)
+                    }
+                    style={{
+                      width: "60px",
+                      padding: "0.25rem",
+                      textAlign: "center",
+                      backgroundColor: "#1F2937",
+                      color: "white",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "0.25rem",
+                    }}
+                  />
+                  <span
+                    style={{
+                      marginLeft: "0.25rem",
+                      fontSize: "0.875rem",
+                      color: "rgba(255, 255, 255, 0.6)",
+                    }}
+                  >
+                    px
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div style={settingsSectionStyles}>
               <h3 style={{ ...settingsHeadingStyles, color: "white" }}>
                 <Palette
@@ -2172,7 +2498,10 @@ const StreamingApp = () => {
                 >
                   <li>In OBS Studio, add a "Browser" source to your scene</li>
                   <li>Paste the Display URL above as the URL</li>
-                  <li>Set width to 800 and height to 200</li>
+                  <li>
+                    Set width to {displaySettings.displayWidth || 800} and
+                    height to {displaySettings.displayHeight || 200}
+                  </li>
                   <li>Check "Refresh browser when scene becomes active"</li>
                   <li>Position the source where names should appear</li>
                 </ol>
@@ -2700,7 +3029,7 @@ const StreamingApp = () => {
                 >
                   Add individuals manually by filling out the form at the bottom
                   of the People tab, or import multiple people from an Excel
-                  spreadsheet.
+                  spreadsheet using drag and drop.
                 </p>
               </div>
 
@@ -2723,7 +3052,7 @@ const StreamingApp = () => {
                     size={18}
                     style={{ marginRight: "0.5rem", color: "#60A5FA" }}
                   />{" "}
-                  Selecting vs Streaming
+                  Selecting People
                 </h3>
                 <p
                   style={{
@@ -2731,14 +3060,11 @@ const StreamingApp = () => {
                     paddingLeft: "1.5rem",
                   }}
                 >
-                  <span style={{ color: "#60A5FA", fontWeight: "500" }}>
-                    Select
-                  </span>{" "}
-                  a person to view them in the preview.{" "}
+                  Simply click on a person's card to select them. Click the{" "}
                   <span style={{ color: "#4ADE80", fontWeight: "500" }}>
                     Stream
                   </span>{" "}
-                  a person to display their name in OBS and other tools.
+                  button to display their information.
                 </p>
               </div>
 
@@ -2769,9 +3095,41 @@ const StreamingApp = () => {
                     paddingLeft: "1.5rem",
                   }}
                 >
-                  Use the Style tab to customize how names will appear. Try
-                  different background styles, text options, and effects for
-                  optimal visibility.
+                  Use the Style tab to customize how names will appear. Adjust
+                  size, fonts, backgrounds, and effects for optimal visibility.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: "1.125rem",
+                    fontWeight: "500",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <ChevronRight
+                    size={18}
+                    style={{ marginRight: "0.5rem", color: "#60A5FA" }}
+                  />{" "}
+                  Resizing Elements
+                </h3>
+                <p
+                  style={{
+                    color: "rgba(255, 255, 255, 0.8)",
+                    paddingLeft: "1.5rem",
+                  }}
+                >
+                  The Size Settings section lets you adjust the display
+                  dimensions and text sizes. Use sliders or enter exact values
+                  to fit your needs.
                 </p>
               </div>
 
@@ -2804,7 +3162,7 @@ const StreamingApp = () => {
                 >
                   Add the display URL as a Browser Source in OBS. The display
                   will update automatically when you stream different people.
-                  Size recommendation: 800×200px.
+                  Use your custom width and height settings in OBS.
                 </p>
               </div>
 
@@ -2847,6 +3205,7 @@ const StreamingApp = () => {
                     For better legibility, use bold text on gradient backgrounds
                   </li>
                   <li>Position the display in the lower third of your video</li>
+                  <li>Adjust sizes to match your specific stream resolution</li>
                 </ul>
               </div>
             </div>
@@ -2881,27 +3240,27 @@ const StreamingApp = () => {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
+                                @keyframes pulse {
+                                  0%, 100% { opacity: 1; }
+                                  50% { opacity: 0.5; }
+                                }
 
-        @keyframes fadeIn {
-          0% { opacity: 0; }
-          100% { opacity: 1; }
-        }
+                                @keyframes fadeIn {
+                                  0% { opacity: 0; }
+                                  100% { opacity: 1; }
+                                }
 
-        @keyframes bounce {
-          0%, 100% {
-            transform: translateY(-25%);
-            animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
-          }
-          50% {
-            transform: translateY(0);
-            animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-          }
-        }
-      `,
+                                @keyframes bounce {
+                                  0%, 100% {
+                                    transform: translateY(-25%);
+                                    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+                                  }
+                                  50% {
+                                    transform: translateY(0);
+                                    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+                                  }
+                                }
+                              `,
         }}
       />
     </div>
