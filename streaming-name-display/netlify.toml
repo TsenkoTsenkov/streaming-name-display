@@ -1,0 +1,15 @@
+# netlify.toml
+# This file tells Netlify how to build and deploy your site
+
+[build]
+  # Directory to deploy
+  publish = "."
+
+  # Command to run during build (leave empty for simple static deployment)
+  command = ""
+
+# Redirects all routes to index.html for single-page applications
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
