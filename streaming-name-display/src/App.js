@@ -508,7 +508,7 @@ const StreamingApp = () => {
                 <Copy size={16} className="mr-1" /> Copy
               </button>
               <a
-                href="#"
+                href="https://example.com"
                 className="p-2 bg-gradient-to-r from-green-600 to-green-800 text-white hover:from-green-700 hover:to-green-900 flex items-center transition-colors rounded-r-lg"
                 onClick={(e) => {
                   e.preventDefault();
@@ -720,10 +720,10 @@ const StreamingApp = () => {
         }
 
         /* Width classes */
-        .w-1\/4 {
+        .w-1 4 {
           width: 25%;
         }
-        .w-2\/4 {
+        .w-2 4 {
           width: 50%;
         }
         .w-full {
@@ -874,52 +874,52 @@ const StreamingApp = () => {
         .bg-black {
           background-color: black;
         }
-        .bg-white\/5 {
+        .bg-white l5 {
           background-color: rgba(255, 255, 255, 0.05);
         }
-        .bg-white\/10 {
+        .bg-white 10 {
           background-color: rgba(255, 255, 255, 0.1);
         }
-        .bg-white\/15 {
+        .bg-white 15 {
           background-color: rgba(255, 255, 255, 0.15);
         }
-        .bg-white\/20 {
+        .bg-white 20 {
           background-color: rgba(255, 255, 255, 0.2);
         }
-        .bg-black\/20 {
+        .bg-black 20 {
           background-color: rgba(0, 0, 0, 0.2);
         }
-        .bg-black\/30 {
+        .bg-black 30 {
           background-color: rgba(0, 0, 0, 0.3);
         }
-        .bg-black\/40 {
+        .bg-black 40 {
           background-color: rgba(0, 0, 0, 0.4);
         }
-        .bg-black\/70 {
+        .bg-black 70 {
           background-color: rgba(0, 0, 0, 0.7);
         }
-        .bg-black\/80 {
+        .bg-black 80 {
           background-color: rgba(0, 0, 0, 0.8);
         }
-        .bg-red-500\/20 {
+        .bg-red-500 20 {
           background-color: rgba(239, 68, 68, 0.2);
         }
-        .bg-green-500\/20 {
+        .bg-green-500 20 {
           background-color: rgba(34, 197, 94, 0.2);
         }
-        .bg-pink-500\/20 {
+        .bg-pink-500 20 {
           background-color: rgba(236, 72, 153, 0.2);
         }
-        .bg-purple-500\/20 {
+        .bg-purple-500 20 {
           background-color: rgba(168, 85, 247, 0.2);
         }
-        .bg-gray-700\/50 {
+        .bg-gray-700 50 {
           background-color: rgba(55, 65, 81, 0.5);
         }
         .bg-red-600 {
           background-color: #dc2626;
         }
-        .bg-green-600\/80 {
+        .bg-green-600 80 {
           background-color: rgba(22, 163, 74, 0.8);
         }
 
@@ -954,22 +954,22 @@ const StreamingApp = () => {
         .border-white {
           border-color: white;
         }
-        .border-white\/0 {
+        .border-white 0 {
           border-color: rgba(255, 255, 255, 0);
         }
-        .border-white\/10 {
+        .border-white/10 {
           border-color: rgba(255, 255, 255, 0.1);
         }
-        .border-white\/20 {
+        .border-white 20 {
           border-color: rgba(255, 255, 255, 0.2);
         }
         .border-pink-500 {
           border-color: #ec4899;
         }
-        .border-pink-500\/50 {
+        .border-pink-50050 {
           border-color: rgba(236, 72, 153, 0.5);
         }
-        .border-green-500\/30 {
+        .border-green-500 30 {
           border-color: rgba(34, 197, 94, 0.3);
         }
 
@@ -1019,22 +1019,22 @@ const StreamingApp = () => {
         .text-transparent {
           color: transparent;
         }
-        .text-white\/40 {
+        .text-white 40 {
           color: rgba(255, 255, 255, 0.4);
         }
-        .text-white\/50 {
+        .text-white 50 {
           color: rgba(255, 255, 255, 0.5);
         }
-        .text-white\/60 {
+        .text-white60 {
           color: rgba(255, 255, 255, 0.6);
         }
-        .text-white\/70 {
+        .text-white 70 {
           color: rgba(255, 255, 255, 0.7);
         }
-        .text-white\/80 {
+        .text-white 80 {
           color: rgba(255, 255, 255, 0.8);
         }
-        .text-white\/90 {
+        .text-white90 {
           color: rgba(255, 255, 255, 0.9);
         }
         .text-red-100 {
@@ -1136,12 +1136,12 @@ const StreamingApp = () => {
           --tw-gradient-stops:
             var(--tw-gradient-from), var(--tw-gradient-to, rgba(21, 128, 61, 0));
         }
-        .from-green-900\/40 {
+        .from-green-900 40 {
           --tw-gradient-from: rgba(20, 83, 45, 0.4);
           --tw-gradient-stops:
             var(--tw-gradient-from), var(--tw-gradient-to, rgba(20, 83, 45, 0));
         }
-        .from-green-900\/60 {
+        .from-green-900 60 {
           --tw-gradient-from: rgba(20, 83, 45, 0.6);
           --tw-gradient-stops:
             var(--tw-gradient-from), var(--tw-gradient-to, rgba(20, 83, 45, 0));
@@ -1156,7 +1156,7 @@ const StreamingApp = () => {
           --tw-gradient-stops:
             var(--tw-gradient-from), var(--tw-gradient-to, rgba(220, 38, 38, 0));
         }
-        .from-indigo-900\/90 {
+        .from-indigo-900 90 {
           --tw-gradient-from: rgba(49, 46, 129, 0.9);
           --tw-gradient-stops:
             var(--tw-gradient-from), var(--tw-gradient-to, rgba(49, 46, 129, 0));
@@ -1179,10 +1179,10 @@ const StreamingApp = () => {
         .to-green-800 {
           --tw-gradient-to: #166534;
         }
-        .to-green-800\/40 {
+        .to-green-800 40 {
           --tw-gradient-to: rgba(22, 101, 52, 0.4);
         }
-        .to-green-800\/60 {
+        .to-green-800 60 {
           --tw-gradient-to: rgba(22, 101, 52, 0.6);
         }
         .to-green-900 {
@@ -1197,7 +1197,7 @@ const StreamingApp = () => {
         .to-purple-700 {
           --tw-gradient-to: #7e22ce;
         }
-        .to-purple-900\/90 {
+        .to-purple-900 90 {
           --tw-gradient-to: rgba(88, 28, 135, 0.9);
         }
         .bg-clip-text {
@@ -1300,13 +1300,13 @@ const StreamingApp = () => {
             0 10px 15px -3px rgba(0, 0, 0, 0.1),
             0 4px 6px -4px rgba(0, 0, 0, 0.1);
         }
-        .shadow-red-700\/30 {
+        .shadow-red-700 30 {
           --tw-shadow-color: rgba(185, 28, 28, 0.3);
           box-shadow:
             var(--tw-ring-offset-shadow, 0 0 #0000),
             var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
         }
-        .shadow-purple-700\/20 {
+        .shadow-purple-700 20 {
           --tw-shadow-color: rgba(126, 34, 206, 0.2);
           box-shadow:
             var(--tw-ring-offset-shadow, 0 0 #0000),
