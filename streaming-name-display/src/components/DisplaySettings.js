@@ -409,6 +409,24 @@ const DisplaySettings = () => {
             style={sliderStyle}
           />
         </div>
+        
+        {/* Opacity Setting */}
+        <div style={sliderContainerStyle}>
+          <label style={sliderLabelStyle}>
+            Transparency: {Math.round((1 - (displaySettings.opacity ?? 1)) * 100)}%
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={1 - (displaySettings.opacity ?? 1)}
+            onChange={(e) =>
+              handleChangeSetting("opacity", 1 - parseFloat(e.target.value))
+            }
+            style={sliderStyle}
+          />
+        </div>
       </div>
 
       {/* Display Options */}

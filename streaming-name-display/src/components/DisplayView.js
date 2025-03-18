@@ -6,10 +6,19 @@ const DisplayView = ({ person, settings }) => {
   // Trigger animations on mount or when person changes
   useEffect(() => {
     setAnimate(false);
+    // Brief delay to allow the opacity transition to be visible
     setTimeout(() => {
       setAnimate(true);
     }, 50);
   }, [person?.id]);
+  
+  // For fade animation, we need to handle opacity specially
+  const getInitialOpacity = () => {
+    if (!animate && settings.animation === 'fade') {
+      return 0; // Start at 0 opacity for fade animation
+    }
+    return settings.opacity ?? 1; // Otherwise use the configured opacity
+  };
   
   // Return null (render nothing) in the following cases:
   // 1. No person or settings data
@@ -31,7 +40,8 @@ const DisplayView = ({ person, settings }) => {
       boxShadow,
       cornerRadius = 8,
       padding = 16,
-      backgroundColor = '#3b82f6'
+      backgroundColor = '#3b82f6',
+      opacity
     } = settings;
 
     const baseStyles = {
@@ -44,6 +54,7 @@ const DisplayView = ({ person, settings }) => {
       color: 'white',
       fontFamily: "'Inter', system-ui, sans-serif",
       transition: 'all 0.3s ease',
+      opacity: getInitialOpacity(),
     };
 
     // Apply styles based on displayStyle
@@ -294,19 +305,21 @@ const DisplayView = ({ person, settings }) => {
     switch (animation) {
       case 'fade':
         return { 
-          opacity: 1,
+          // Don't include opacity here, we'll handle it separately
           transition: 'opacity 0.5s ease-out'
         };
       case 'slide':
         return { 
           transform: 'translateX(0)',
-          opacity: 1,
+          // Only set opacity if we're in the animation phase
+          ...(animate ? {} : { opacity: 0 }),
           transition: 'transform 0.5s ease-out, opacity 0.5s ease-out'
         };
       case 'pop':
         return { 
           transform: 'scale(1)',
-          opacity: 1,
+          // Only set opacity if we're in the animation phase
+          ...(animate ? {} : { opacity: 0 }),
           transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease-out'
         };
       case 'pulse':
@@ -338,6 +351,11 @@ const DisplayView = ({ person, settings }) => {
     ...getAnimationStyles(),
     position: 'relative', // Ensure position is set for decorative elements
   };
+  
+  // Once animation is complete, ensure we're using the correct opacity setting
+  if (animate) {
+    containerStyles.opacity = settings.opacity ?? 1;
+  }
   
   const nameStyles = getNameStyles();
   const titleStyles = getTitleStyles();

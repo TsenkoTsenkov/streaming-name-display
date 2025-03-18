@@ -21,6 +21,7 @@ const defaultSettings = {
   fontSize: 30, // Default font size in pixels
   titleFontSize: 20, // Default title font size in pixels
   cornerRadius: 8,
+  opacity: 1, // Control the widget transparency (1 = fully opaque, 0 = fully transparent)
   padding: 16,
   animation: "fade",
   centeredText: false,
