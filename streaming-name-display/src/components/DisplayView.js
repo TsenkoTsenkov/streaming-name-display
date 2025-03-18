@@ -40,8 +40,7 @@ const DisplayView = ({ person, settings }) => {
       boxShadow,
       cornerRadius = 8,
       padding = 16,
-      backgroundColor = '#3b82f6',
-      opacity
+      backgroundColor = '#3b82f6'
     } = settings;
 
     const baseStyles = {
