@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { saveData, getData, listenToData } from '../utils/firebaseConfig';
 
 // Create the context
 const AppContext = createContext();
@@ -72,49 +73,14 @@ const emptyDisplay = {
 
 // Create provider component
 export const AppProvider = ({ children }) => {
-  // Get initial state from localStorage if available
-  const getInitialPeople = () => {
-    try {
-      const storedPeople = localStorage.getItem("streamingAppPeople");
-      if (storedPeople) {
-        return JSON.parse(storedPeople);
-      }
-    } catch (e) {
-      console.error("Error loading stored people:", e);
-    }
-    return defaultPeople;
-  };
-
-  const getInitialSettings = () => {
-    try {
-      const storedSettings = localStorage.getItem("streamingAppSettings");
-      if (storedSettings) {
-        return JSON.parse(storedSettings);
-      }
-    } catch (e) {
-      console.error("Error loading stored settings:", e);
-    }
-    return defaultSettings;
-  };
-
-  // Get initial live person
-  const getInitialLivePerson = () => {
-    try {
-      const storedLivePerson = localStorage.getItem("streamingAppLivePerson");
-      if (storedLivePerson) {
-        return JSON.parse(storedLivePerson);
-      }
-    } catch (e) {
-      console.error("Error loading stored live person:", e);
-    }
-    return null;
-  };
+  // Get initial state from Firebase if available
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // State
-  const [people, setPeople] = useState(getInitialPeople);
-  const [displaySettings, setDisplaySettings] = useState(getInitialSettings);
-  const [liveSettings, setLiveSettings] = useState(getInitialSettings);
-  const [livePerson, setLivePerson] = useState(getInitialLivePerson);
+  const [people, setPeople] = useState(defaultPeople);
+  const [displaySettings, setDisplaySettings] = useState(defaultSettings);
+  const [liveSettings, setLiveSettings] = useState(defaultSettings);
+  const [livePerson, setLivePerson] = useState(null);
   const [activeTab, setActiveTab] = useState("people");
   const [newPerson, setNewPerson] = useState({
     name: "",
@@ -130,40 +96,102 @@ export const AppProvider = ({ children }) => {
   const [errorMessage, setErrorMessage] = useState("");
   const [sidebarWidth, setSidebarWidth] = useState(300); // Default sidebar width
 
+  // Load initial data from Firebase
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        // Load people from Firebase
+        const storedPeople = await getData('people');
+        if (storedPeople) {
+          setPeople(storedPeople);
+        }
+
+        // Load settings from Firebase
+        const storedSettings = await getData('settings');
+        if (storedSettings) {
+          setDisplaySettings(storedSettings);
+          setLiveSettings(storedSettings);
+        }
+
+        // Load live person from Firebase
+        const storedLivePerson = await getData('livePerson');
+        if (storedLivePerson) {
+          setLivePerson(storedLivePerson);
+        }
+
+        setInitialLoadComplete(true);
+      } catch (error) {
+        console.error("Error loading initial data from Firebase:", error);
+        setInitialLoadComplete(true); // Still mark as complete to avoid blocking the app
+      }
+    };
+
+    loadInitialData();
+  }, []);
+
+  // Set up real-time listeners for data changes once initial load is complete
+  useEffect(() => {
+    if (!initialLoadComplete) return;
+
+    // Listen for live person updates
+    const unsubscribeLivePerson = listenToData('livePerson', (data) => {
+      if (data) {
+        setLivePerson(data);
+      } else {
+        setLivePerson(emptyDisplay);
+      }
+    });
+
+    // Listen for live settings updates
+    const unsubscribeLiveSettings = listenToData('liveSettings', (data) => {
+      if (data) {
+        setLiveSettings(data);
+      }
+    });
+
+    return () => {
+      unsubscribeLivePerson();
+      unsubscribeLiveSettings();
+    };
+  }, [initialLoadComplete]);
+
   // Get selected person
   const selectedPerson = people.find((p) => p.selected) || null;
 
-  // Save to localStorage when state changes
+  // Save to Firebase when people state changes
   useEffect(() => {
-    try {
-      localStorage.setItem("streamingAppPeople", JSON.stringify(people));
-    } catch (e) {
-      console.error("Error saving people to localStorage:", e);
-    }
-  }, [people]);
+    if (!initialLoadComplete) return;
+    
+    saveData('people', people).catch(error => {
+      console.error("Error saving people to Firebase:", error);
+    });
+  }, [people, initialLoadComplete]);
 
+  // Save settings when they change
   useEffect(() => {
-    try {
-      localStorage.setItem("streamingAppSettings", JSON.stringify(displaySettings));
-    } catch (e) {
-      console.error("Error saving settings to localStorage:", e);
-    }
-  }, [displaySettings]);
+    if (!initialLoadComplete) return;
+    
+    saveData('settings', displaySettings).catch(error => {
+      console.error("Error saving settings to Firebase:", error);
+    });
+  }, [displaySettings, initialLoadComplete]);
 
   // Save live person whenever it changes
   useEffect(() => {
+    if (!initialLoadComplete) return;
+    
     try {
       if (livePerson) {
-        localStorage.setItem("streamingAppLivePerson", JSON.stringify(livePerson));
-        localStorage.setItem("streamingAppLiveSettings", JSON.stringify(liveSettings));
+        saveData('livePerson', livePerson);
+        saveData('liveSettings', liveSettings);
       } else {
         // If no live person, store the empty display
-        localStorage.setItem("streamingAppLivePerson", JSON.stringify(emptyDisplay));
-        localStorage.setItem("streamingAppLiveSettings", JSON.stringify(liveSettings));
+        saveData('livePerson', emptyDisplay);
+        saveData('liveSettings', liveSettings);
       }
       
       // Create a blob URL with the person data for OBS to access
-      // This works around the localStorage limitation in OBS browser sources
+      // This works as a backup for direct DOM access
       const liveData = {
         person: livePerson || emptyDisplay,
         settings: liveSettings,
@@ -188,12 +216,22 @@ export const AppProvider = ({ children }) => {
         document.body.appendChild(newEl);
       }
       
-      // Trigger an update event
+      // Update all open windows with postMessage
+      if (window.opener) {
+        window.opener.postMessage({
+          type: 'stream-update',
+          data: liveData
+        }, '*');
+      }
+      
+      // Also store in localStorage as a fallback
+      localStorage.setItem("streamingAppLivePerson", JSON.stringify(livePerson || emptyDisplay));
+      localStorage.setItem("streamingAppLiveSettings", JSON.stringify(liveSettings));
       localStorage.setItem("streamingAppLiveUpdate", Date.now().toString());
     } catch (e) {
       console.error("Error saving live person:", e);
     }
-  }, [livePerson, liveSettings]);
+  }, [livePerson, liveSettings, initialLoadComplete]);
 
   // Functions for updating state
   const handleSelectPerson = (id) => {
@@ -252,30 +290,34 @@ export const AppProvider = ({ children }) => {
       return;
     }
 
-    const updatedPeople = people.map((p) =>
-      p.id === editingPerson.id
-        ? {
-            ...p,
-            name: editingPerson.name.trim(),
-            surname: editingPerson.surname.trim(),
-            title: editingPerson.title.trim(),
-          }
-        : p
+    setPeople(
+      people.map((p) =>
+        p.id === editingPerson.id
+          ? {
+              ...p,
+              name: editingPerson.name.trim(),
+              surname: editingPerson.surname.trim(),
+              title: editingPerson.title.trim(),
+            }
+          : p
+      )
     );
     
-    setPeople(updatedPeople);
-    
-    // If we edited the live person, update the live person too
-    if (editingPerson.streaming) {
-      const updatedLivePerson = updatedPeople.find(p => p.id === editingPerson.id);
-      setLivePerson(updatedLivePerson);
+    // If the edited person is live, update the live person too
+    if (livePerson && livePerson.id === editingPerson.id) {
+      setLivePerson({
+        ...livePerson,
+        name: editingPerson.name.trim(),
+        surname: editingPerson.surname.trim(),
+        title: editingPerson.title.trim(),
+      });
     }
     
     setIsEditModalOpen(false);
     setEditingPerson(null);
     setErrorMessage("");
   };
-  
+
   const handleCancelEdit = () => {
     setIsEditModalOpen(false);
     setEditingPerson(null);
@@ -283,156 +325,211 @@ export const AppProvider = ({ children }) => {
   };
 
   const handleToggleSetting = (setting) => {
-    const updatedSettings = {
-      ...displaySettings,
-      [setting]: !displaySettings[setting],
-    };
-    
-    setDisplaySettings(updatedSettings);
-    
-    // If there's a live person, update live settings too
-    if (livePerson) {
-      setLiveSettings(updatedSettings);
-    }
+    setDisplaySettings((prev) => ({
+      ...prev,
+      [setting]: !prev[setting],
+    }));
   };
 
   const handleChangeSetting = (setting, value) => {
-    const updatedSettings = {
-      ...displaySettings,
+    setDisplaySettings((prev) => ({
+      ...prev,
       [setting]: value,
-    };
-    
-    setDisplaySettings(updatedSettings);
-    
-    // If there's a live person, update live settings too
-    if (livePerson) {
-      setLiveSettings(updatedSettings);
-    }
+    }));
   };
 
   const handleSizeChange = (setting, value) => {
-    const numValue = parseInt(value, 10);
-    if (!isNaN(numValue)) {
-      const updatedSettings = {
-        ...displaySettings,
-        [setting]: numValue,
-      };
-      
-      setDisplaySettings(updatedSettings);
-      
-      // If there's a live person, update live settings too
-      if (livePerson) {
-        setLiveSettings(updatedSettings);
-      }
+    // Make sure value is a number and within range
+    const numValue = Number(value);
+    
+    let finalValue = numValue;
+    if (isNaN(numValue)) {
+      finalValue = displaySettings[setting];
     }
+    
+    setDisplaySettings((prev) => ({
+      ...prev,
+      [setting]: finalValue,
+    }));
   };
 
   const handleGoLive = () => {
     if (!selectedPerson) return;
     
-    // Update liveSettings with current display settings
-    setLiveSettings(displaySettings);
-    
-    // Update people to mark selected person as streaming
-    const updatedPeople = people.map((p) => ({
-      ...p,
-      streaming: p.id === selectedPerson.id,
-    }));
-    
-    setPeople(updatedPeople);
-    
-    // Set the live person
-    const newLivePerson = updatedPeople.find(p => p.id === selectedPerson.id);
-    setLivePerson(newLivePerson);
-  };
-
-  // Function to directly make a person go live
-  const handleGoLiveWithPerson = (id) => {
-    // Update people to mark this person as streaming
-    const updatedPeople = people.map((p) => ({
-      ...p,
-      streaming: p.id === id,
-      selected: p.id === id  // Also select the person
-    }));
-    
-    setPeople(updatedPeople);
-    
-    // Set the live person
-    const newLivePerson = updatedPeople.find(p => p.id === id);
-    setLivePerson(newLivePerson);
+    // Update the live person with the selected person
+    setLivePerson(selectedPerson);
     
     // Update liveSettings with current display settings
-    setLiveSettings(displaySettings);
+    setLiveSettings({ ...displaySettings });
+    
+    // Mark the person as streaming
+    setPeople(
+      people.map((p) => ({
+        ...p,
+        streaming: p.id === selectedPerson.id,
+      }))
+    );
+    
+    // Also update Firebase with real-time streaming state
+    saveData('streamingState', {
+      active: true,
+      personId: selectedPerson.id,
+      timestamp: Date.now()
+    });
+    
+    // Update preview window
+    updatePreviewWindow();
   };
 
-  // Function to stop streaming
+  // New function to stop streaming and show nothing
   const handleStopStreaming = () => {
-    // Update people to unmark the streaming person
-    const updatedPeople = people.map((p) => ({
-      ...p,
-      streaming: false,
+    // Set empty person as the live person
+    setLivePerson(emptyDisplay);
+    
+    // Update liveSettings with current display settings
+    setLiveSettings({ ...displaySettings });
+    
+    // Mark all people as not streaming
+    setPeople(
+      people.map((p) => ({
+        ...p,
+        streaming: false,
+      }))
+    );
+    
+    // Also update Firebase with empty streaming state
+    saveData('streamingState', {
+      active: false,
+      personId: null,
+      timestamp: Date.now()
+    });
+    
+    // Update preview window
+    updatePreviewWindow();
+  };
+
+  const handleGoLiveWithPerson = (id) => {
+    const personToStream = people.find((p) => p.id === id);
+    if (!personToStream) return;
+    
+    // First select this person
+    setPeople(
+      people.map((p) => ({
+        ...p,
+        selected: p.id === id,
+        streaming: p.id === id,
+      }))
+    );
+    
+    // Then set as live
+    setLivePerson(personToStream);
+    
+    // Update liveSettings with current display settings
+    setLiveSettings({ ...displaySettings });
+    
+    // Also update Firebase with real-time streaming state
+    saveData('streamingState', {
+      active: true,
+      personId: id,
+      timestamp: Date.now()
+    });
+    
+    // Update preview window
+    updatePreviewWindow();
+  };
+
+  const updatePreviewWindow = () => {
+    if (previewWindowRef && !previewWindowRef.closed) {
+      try {
+        // Send a message to the preview window to update
+        previewWindowRef.postMessage({
+          type: 'stream-update',
+          data: {
+            person: livePerson || emptyDisplay,
+            settings: liveSettings,
+            timestamp: Date.now()
+          }
+        }, '*');
+      } catch (e) {
+        console.error("Error updating preview window:", e);
+      }
+    }
+  };
+
+  // Functions for importing people
+  const handleImportPeople = (peopleArray) => {
+    // Generate new IDs for imported people
+    let nextId = Math.max(0, ...people.map(p => p.id)) + 1;
+    
+    const newPeople = peopleArray.map(person => ({
+      ...person,
+      id: nextId++,
+      selected: false,
+      streaming: false
     }));
     
-    setPeople(updatedPeople);
-    
-    // Clear the live person
-    setLivePerson(null);
+    setPeople([...people, ...newPeople]);
+    setIsImportModalOpen(false);
+    setImportedPeople([]);
   };
 
-  const value = {
-    people,
-    setPeople,
-    displaySettings,
-    setDisplaySettings,
-    liveSettings,
-    setLiveSettings,
-    livePerson,
-    setLivePerson,
-    activeTab,
-    setActiveTab,
-    newPerson,
-    setNewPerson,
-    editingPerson,
-    setEditingPerson,
-    isEditModalOpen,
-    setIsEditModalOpen,
-    dragActive,
-    setDragActive,
-    previewWindowRef,
-    setPreviewWindowRef,
-    isImportModalOpen,
-    setIsImportModalOpen,
-    importedPeople,
-    setImportedPeople,
-    errorMessage,
-    setErrorMessage,
-    sidebarWidth,
-    setSidebarWidth,
-    selectedPerson,
-    handleSelectPerson,
-    handleAddPerson,
-    handleRemovePerson,
-    handleStartEdit,
-    handleSaveEdit,
-    handleCancelEdit,
-    handleToggleSetting,
-    handleChangeSetting,
-    handleSizeChange,
-    handleGoLive,
-    handleGoLiveWithPerson,
-    handleStopStreaming,
-  };
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider
+      value={{
+        people,
+        setPeople,
+        displaySettings,
+        setDisplaySettings,
+        livePerson,
+        setLivePerson,
+        liveSettings,
+        setLiveSettings,
+        activeTab,
+        setActiveTab,
+        newPerson,
+        setNewPerson,
+        editingPerson,
+        setEditingPerson,
+        isEditModalOpen,
+        setIsEditModalOpen,
+        dragActive,
+        setDragActive,
+        previewWindowRef,
+        setPreviewWindowRef,
+        isImportModalOpen,
+        setIsImportModalOpen,
+        importedPeople,
+        setImportedPeople,
+        errorMessage,
+        setErrorMessage,
+        sidebarWidth,
+        setSidebarWidth,
+        selectedPerson,
+        handleSelectPerson,
+        handleAddPerson,
+        handleRemovePerson,
+        handleStartEdit,
+        handleSaveEdit,
+        handleCancelEdit,
+        handleToggleSetting,
+        handleChangeSetting,
+        handleSizeChange,
+        handleGoLive,
+        handleGoLiveWithPerson,
+        handleStopStreaming,
+        handleImportPeople,
+        updatePreviewWindow,
+        initialLoadComplete,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
 };
 
-// Custom hook for using the context
+// Custom hook to use the context
 export const useAppContext = () => {
-  const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useAppContext must be used within an AppProvider');
-  }
-  return context;
+  return useContext(AppContext);
 };
 
 export default AppContext; 

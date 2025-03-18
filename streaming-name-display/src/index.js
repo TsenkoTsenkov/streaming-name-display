@@ -6,15 +6,18 @@ import DisplayPage from './pages/DisplayPage';
 import reportWebVitals from './reportWebVitals';
 import { AppProvider } from './context/AppContext';
 
-// Determine which component to render based on URL
-const urlParams = new URLSearchParams(window.location.search);
-const isDisplayMode = urlParams.get('display') === 'true';
-
+// Create the root element
 const root = ReactDOM.createRoot(document.getElementById('root'));
+
+// Check if this is a display page by checking URL parameters
+const urlParams = new URLSearchParams(window.location.search);
+const isDisplayPage = urlParams.get('display') === 'true';
+
+// Render the appropriate component based on the URL
 root.render(
   <React.StrictMode>
     <AppProvider>
-      {isDisplayMode ? <DisplayPage /> : <App />}
+      {isDisplayPage ? <DisplayPage /> : <App />}
     </AppProvider>
   </React.StrictMode>
 );

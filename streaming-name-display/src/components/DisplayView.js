@@ -11,7 +11,13 @@ const DisplayView = ({ person, settings }) => {
     }, 50);
   }, [person?.id]);
   
-  if (!person || !settings) {
+  // Return null (render nothing) in the following cases:
+  // 1. No person or settings data
+  // 2. Person has isEmpty flag set to true
+  // 3. Person has no name and no surname (empty display)
+  if (!person || !settings || 
+      person.isEmpty === true || 
+      (!person.name && !person.surname)) {
     return null;
   }
 

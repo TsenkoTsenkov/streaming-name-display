@@ -1,33 +1,58 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import DisplayView from "../components/DisplayView";
+import { getData, listenToData } from '../utils/firebaseConfig';
 
-// Polling interval for receiver mode (1 second)
-const POLLING_INTERVAL = 1000;
+// Empty person to display when nothing is streaming - completely empty
+const EMPTY_PERSON = {
+  id: 0,
+  name: "",
+  surname: "",
+  title: "",
+  streaming: false,
+  isEmpty: true
+};
+
+// Default settings if none are provided
+const DEFAULT_SETTINGS = {
+  displayWidth: 400,
+  displayHeight: 120,
+  fontSize: 32,
+  titleFontSize: 18,
+  displayStyle: "gradient",
+  borderStyle: "thin",
+  textStyle: "normal",
+  animation: "fade",
+  showName: true,
+  showTitles: true,
+  textShadow: true,
+  boxShadow: true,
+  cornerRadius: 8,
+  padding: 16,
+  decorativeElements: false
+};
 
 const DisplayPage = () => {
-  const [searchParams] = useSearchParams();
   const [person, setPerson] = useState(null);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [apiUrl] = useState(null);
   const [debugMessage, setDebugMessage] = useState("");
   const [lastUpdate, setLastUpdate] = useState(0);
+  const refreshCountRef = useRef(0);
+  const firebaseUnsubscribeRef = useRef(null);
 
-  // Get mode parameters
-  const isDisplay = searchParams.get("display") === "true";
-  const isReceiver = searchParams.get("receiver") === "true";
-  const obsMode = searchParams.get("obs") === "true";
+  // Use useMemo to create URL parameters to prevent unnecessary re-rendering
+  const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const obsMode = urlParams.get("obs") === "true";
+  const refreshParam = urlParams.get("t"); // Timestamp param for forced refresh
 
-  // Load data from localStorage or DOM element
+  // Load data from local sources as fallback
   const loadFromLocalSources = useCallback(() => {
+    console.log("Loading from local sources (fallback)");
     // Try localStorage first
-    const storedData = localStorage.getItem("streamingData");
-    const streamingAppData = localStorage.getItem("streamingAppLiveUpdate");
-    const dataEl = document.getElementById("data-stream-data");
     const liveDataEl = document.getElementById("liveStreamData");
     
     // Check for streamingAppLiveUpdate first (the data that's set by AppContext)
+    const streamingAppData = localStorage.getItem("streamingAppLiveUpdate");
     if (streamingAppData) {
       try {
         const livePerson = JSON.parse(localStorage.getItem("streamingAppLivePerson"));
@@ -36,34 +61,26 @@ const DisplayPage = () => {
         if (livePerson) {
           const updateTime = parseInt(streamingAppData, 10);
           if (updateTime > lastUpdate) {
-            setPerson(livePerson);
-            setSettings(liveSettings);
+            // Check if the livePerson is empty (has empty name or is not properly initialized)
+            const isEmptyPerson = !livePerson.name || livePerson.name === '';
+            
+            if (isEmptyPerson) {
+              console.log("Empty person data found, using default", EMPTY_PERSON);
+              setPerson(EMPTY_PERSON);
+            } else {
+              console.log("Loaded from streamingApp localStorage", livePerson);
+              setPerson(livePerson);
+            }
+            
+            setSettings(liveSettings || DEFAULT_SETTINGS);
             setLastUpdate(updateTime);
             setLoading(false);
-            setDebugMessage("Loaded from streamingApp localStorage");
+            setDebugMessage(isEmptyPerson ? "Using default person (empty data found)" : "Loaded from streamingApp localStorage");
           }
-          return;
+          return true;
         }
       } catch (err) {
         console.error("Error parsing streamingApp data", err);
-      }
-    }
-    
-    // Try legacy streamingData
-    if (storedData) {
-      try {
-        const parsedData = JSON.parse(storedData);
-        // Only update if data has changed
-        if (parsedData.lastUpdate > lastUpdate) {
-          setPerson(parsedData.person);
-          setSettings(parsedData.settings);
-          setLastUpdate(parsedData.lastUpdate);
-          setLoading(false);
-          setDebugMessage("Loaded from localStorage");
-        }
-        return;
-      } catch (err) {
-        console.error("Error parsing localStorage data", err);
       }
     }
     
@@ -74,70 +91,47 @@ const DisplayPage = () => {
         if (jsonData) {
           const parsedData = JSON.parse(jsonData);
           if (parsedData.timestamp > lastUpdate) {
-            setPerson(parsedData.person);
-            setSettings(parsedData.settings);
+            // Check for empty person data
+            if (!parsedData.person || !parsedData.person.name || parsedData.person.name === '') {
+              console.log("Empty person in liveStreamData, using default");
+              setPerson(EMPTY_PERSON);
+            } else {
+              setPerson(parsedData.person);
+            }
+            setSettings(parsedData.settings || DEFAULT_SETTINGS);
             setLastUpdate(parsedData.timestamp);
             setLoading(false);
             setDebugMessage("Loaded from liveStreamData element");
           }
-          return;
+          return true;
         }
       } catch (err) {
         console.error("Error parsing liveStreamData element", err);
       }
     }
     
-    // Try DOM element as fallback (older method)
-    if (dataEl) {
-      const domData = dataEl.getAttribute("data-stream-content");
-      if (domData) {
-        try {
-          const parsedData = JSON.parse(domData);
-          // Only update if data has changed
-          if (parsedData.lastUpdate > lastUpdate) {
-            setPerson(parsedData.person);
-            setSettings(parsedData.settings);
-            setLastUpdate(parsedData.lastUpdate);
-            setLoading(false);
-            setDebugMessage("Loaded from DOM element");
-          }
-          return;
-        } catch (err) {
-          console.error("Error parsing DOM data", err);
-        }
-      }
+    // If nothing worked, use default settings
+    if (!person && !settings) {
+      console.log("No data found in any source, using defaults");
+      setPerson(EMPTY_PERSON);
+      setSettings(DEFAULT_SETTINGS);
+      setLoading(false);
+      setDebugMessage("Using default data (no local data found)");
+      return true;
     }
     
-    // If no person data is found, use default settings
-    if (!person) {
-      setSettings({
-        displayWidth: 400,
-        displayHeight: 120,
-        fontSize: 32,
-        titleFontSize: 18,
-        displayStyle: "gradient",
-        borderStyle: "thin",
-        textStyle: "normal",
-        animation: "fade",
-        showName: true,
-        showTitles: true,
-        textShadow: true,
-        boxShadow: true,
-        cornerRadius: 8,
-        padding: 16,
-        decorativeElements: false
-      });
-      setDebugMessage("No live data found - using defaults");
-      setLoading(false);
-    }
-  }, [lastUpdate, person]);
+    return false;
+  }, [lastUpdate, person, settings]);
 
-  // Load data from various sources based on mode
+  // Load data from Firebase and fall back to other sources if needed
   const loadLiveData = useCallback(async () => {
+    console.log("Loading live data from Firebase");
+    
     try {
-      // 1. Try to load from URL parameters (for direct links)
-      const personParam = searchParams.get("person");
-      const settingsParam = searchParams.get("settings");
+      // First check URL parameters (for direct links)
+      const personParam = urlParams.get("person");
+      const settingsParam = urlParams.get("settings");
+      const timestamp = urlParams.get("t") || '0';
       
       if (personParam && settingsParam) {
         try {
@@ -145,262 +139,250 @@ const DisplayPage = () => {
           const decodedSettings = JSON.parse(decodeURIComponent(settingsParam));
           
           // Only update if there's new data
-          const personTimestamp = searchParams.get("t") || 0;
-          if (parseInt(personTimestamp) > lastUpdate) {
-            setPerson(decodedPerson);
-            setSettings(decodedSettings);
-            setLastUpdate(parseInt(personTimestamp));
+          if (parseInt(timestamp, 10) > lastUpdate) {
+            // Check for empty person data
+            if (!decodedPerson || !decodedPerson.name || decodedPerson.name === '') {
+              console.log("Empty person in URL parameters, using default");
+              setPerson(EMPTY_PERSON);
+            } else {
+              setPerson(decodedPerson);
+            }
+            
+            setSettings(decodedSettings || DEFAULT_SETTINGS);
+            setLastUpdate(parseInt(timestamp, 10));
             setLoading(false);
             setDebugMessage("Loaded from URL parameters");
-            
-            // If in receiver mode, also save this to localStorage for consistent state
-            if (isReceiver) {
-              try {
-                localStorage.setItem("streamingAppLivePerson", JSON.stringify(decodedPerson));
-                localStorage.setItem("streamingAppLiveSettings", JSON.stringify(decodedSettings));
-                localStorage.setItem("streamingAppLiveUpdate", personTimestamp);
-              } catch (e) {
-                console.error("Error saving received data to localStorage", e);
-              }
-            }
+            return true;
           }
-          return;
         } catch (err) {
           console.error("Error parsing URL parameters", err);
         }
       }
       
-      // Look for personData and settingsData (alternative parameter names)
-      const personDataParam = searchParams.get("personData");
-      const settingsDataParam = searchParams.get("settingsData");
+      // Try to load from Firebase
+      const livePerson = await getData('livePerson');
+      const liveSettings = await getData('liveSettings');
+      const streamingState = await getData('streamingState');
       
-      if (personDataParam && settingsDataParam) {
-        try {
-          const decodedPerson = JSON.parse(decodeURIComponent(personDataParam));
-          const decodedSettings = JSON.parse(decodeURIComponent(settingsDataParam));
+      if (streamingState && streamingState.timestamp > lastUpdate) {
+        if (livePerson) {
+          // Check if the livePerson is empty
+          const isEmptyPerson = !livePerson.name || livePerson.name === '';
           
-          // Only update if there's new data
-          const personTimestamp = searchParams.get("t") || 0;
-          if (parseInt(personTimestamp) > lastUpdate) {
-            setPerson(decodedPerson);
-            setSettings(decodedSettings);
-            setLastUpdate(parseInt(personTimestamp));
-            setLoading(false);
-            setDebugMessage("Loaded from URL personData parameters");
-            
-            // If in receiver mode, also save this to localStorage
-            if (isReceiver) {
-              try {
-                localStorage.setItem("streamingAppLivePerson", JSON.stringify(decodedPerson));
-                localStorage.setItem("streamingAppLiveSettings", JSON.stringify(decodedSettings));
-                localStorage.setItem("streamingAppLiveUpdate", personTimestamp);
-              } catch (e) {
-                console.error("Error saving received data to localStorage", e);
-              }
-            }
+          if (isEmptyPerson) {
+            console.log("Empty person data found in Firebase, using default");
+            setPerson(EMPTY_PERSON);
+          } else {
+            console.log("Loaded person from Firebase", livePerson);
+            setPerson(livePerson);
           }
-          return;
-        } catch (err) {
-          console.error("Error parsing personData URL parameters", err);
-        }
-      }
-      
-      // 2. Try to load from API if URL is provided
-      const apiUrlParam = searchParams.get("api");
-      if (apiUrlParam) {
-        try {
-          const apiResponse = await fetch(decodeURIComponent(apiUrlParam));
-          if (apiResponse.ok) {
-            const data = await apiResponse.json();
-            // Check if data has changed since last update
-            const dataTimestamp = data.timestamp || data.lastUpdate || Date.now();
-            if (dataTimestamp > lastUpdate) {
-              setPerson(data.person);
-              setSettings(data.settings);
-              setLastUpdate(dataTimestamp);
-              setLoading(false);
-              setDebugMessage("Loaded from API URL parameter");
-              
-              // If in receiver mode, also save this to localStorage
-              if (isReceiver) {
-                try {
-                  localStorage.setItem("streamingAppLivePerson", JSON.stringify(data.person));
-                  localStorage.setItem("streamingAppLiveSettings", JSON.stringify(data.settings));
-                  localStorage.setItem("streamingAppLiveUpdate", dataTimestamp.toString());
-                } catch (e) {
-                  console.error("Error saving API data to localStorage", e);
-                }
-              }
-            }
-            return;
-          }
-        } catch (err) {
-          console.error("Error fetching from API URL parameter", err);
-        }
-      }
-      
-      // 3. Try to load from API if URL is set in state
-      if (apiUrl) {
-        try {
-          const response = await fetch(apiUrl);
-          if (response.ok) {
-            const data = await response.json();
-            // Check if data has changed since last update
-            if (data.lastUpdate > lastUpdate) {
-              setPerson(data.person);
-              setSettings(data.settings);
-              setLastUpdate(data.lastUpdate);
-              setLoading(false);
-              setDebugMessage("Loaded from API");
-            }
-          }
-          return;
-        } catch (err) {
-          console.error("Error fetching from API", err);
-        }
-      }
-      
-      // 4. Fall back to localStorage or DOM element
-      loadFromLocalSources();
-      
-    } catch (err) {
-      console.error("Error loading live data", err);
-      setDebugMessage(`Error: ${err.message}`);
-      setLoading(false);
-    }
-  }, [apiUrl, isReceiver, lastUpdate, loadFromLocalSources, searchParams]);
-
-  // Handle storage change events (for localStorage communication)
-  const handleStorageChange = useCallback((e) => {
-    if (e.key === "streamingData") {
-      loadLiveData();
-    }
-  }, [loadLiveData]);
-
-  // Handle message events (for postMessage communication)
-  const handleMessageEvent = useCallback((event) => {
-    // Check origin for security if needed
-    // For localhost development, we allow any origin
-    // In production, you might want to restrict this
-
-    // console.log("Received message event:", event);
-
-    try {
-      // Handle messages of type updateStreamingData
-      if (event.data && event.data.type === "updateStreamingData") {
-        const { person, settings, timestamp } = event.data;
-        
-        // Only update if there's new data or no existing data
-        if (!lastUpdate || (timestamp && timestamp > lastUpdate) || !person) {
-          setPerson(person);
-          setSettings(settings);
-          setLastUpdate(timestamp || Date.now());
+          
+          setSettings(liveSettings || DEFAULT_SETTINGS);
+          setLastUpdate(streamingState.timestamp);
           setLoading(false);
-          setDebugMessage("Updated via direct message");
+          setDebugMessage("Loaded from Firebase");
+          return true;
         }
-        return;
       }
       
-      // Handle raw data objects (without a type) as a fallback
-      if (event.data && (event.data.person || event.data.settings)) {
-        const { person, settings, timestamp, lastUpdate: msgLastUpdate } = event.data;
-        const updateTime = timestamp || msgLastUpdate || Date.now();
-        
-        // Only update if there's new data or no existing data
-        if (!lastUpdate || updateTime > lastUpdate) {
-          if (person) setPerson(person);
-          if (settings) setSettings(settings);
-          setLastUpdate(updateTime);
-          setLoading(false);
-          setDebugMessage("Updated via direct message (raw data)");
-        }
-      }
-    } catch (err) {
-      console.error("Error processing message event:", err);
+      // If Firebase data was not found or outdated, try local sources
+      return loadFromLocalSources();
+    } catch (error) {
+      console.error("Error loading from Firebase:", error);
+      // Fall back to local sources if Firebase fails
+      return loadFromLocalSources();
     }
-  }, [lastUpdate]);
+  }, [urlParams, lastUpdate, loadFromLocalSources]);
 
+  // Force a refresh when the refreshParam (timestamp) changes
   useEffect(() => {
-    // Initial load
-    loadLiveData();
-
-    // Set up polling for receiver mode
-    let pollingInterval = null;
-    
-    if (isDisplay && isReceiver) {
-      pollingInterval = setInterval(() => {
-        loadLiveData();
-      }, POLLING_INTERVAL);
-    } else if (isDisplay) {
-      // For regular display mode, listen for localStorage changes
-      window.addEventListener("storage", handleStorageChange);
+    if (refreshParam) {
+      console.log("Refresh param changed", refreshParam);
+      refreshCountRef.current++;
+      // Clear any cached data
+      setLoading(true);
       
-      // Listen for direct messages
-      window.addEventListener("message", handleMessageEvent);
+      // Small delay to ensure load state is visible
+      setTimeout(() => {
+        loadLiveData();
+      }, 100);
     }
+  }, [refreshParam, loadLiveData]);
 
-    // Clean up
-    return () => {
-      if (pollingInterval) clearInterval(pollingInterval);
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("message", handleMessageEvent);
+  // Set up Firebase realtime listeners
+  useEffect(() => {
+    console.log("Setting up Firebase realtime listeners");
+    
+    // Unsubscribe from any existing listeners
+    if (firebaseUnsubscribeRef.current) {
+      firebaseUnsubscribeRef.current();
+    }
+    
+    // Listen for streaming state changes
+    const unsubscribeStreamingState = listenToData('streamingState', (data) => {
+      if (data && data.timestamp > lastUpdate) {
+        console.log("Received streaming state update from Firebase", data);
+        // Load the updated data
+        loadLiveData();
+      }
+    });
+    
+    // Store the unsubscribe function
+    firebaseUnsubscribeRef.current = () => {
+      unsubscribeStreamingState();
     };
-  }, [isDisplay, isReceiver, handleStorageChange, loadLiveData, handleMessageEvent]);
+    
+    return () => {
+      if (firebaseUnsubscribeRef.current) {
+        firebaseUnsubscribeRef.current();
+      }
+    };
+  }, [lastUpdate, loadLiveData]);
 
-  if (loading) {
-    return (
-      <div className="loading-display">
-        <h2>Loading display...</h2>
-      </div>
-    );
-  }
+  // Initial data load and setup event listeners
+  useEffect(() => {
+    console.log("Initial setup for DisplayPage");
+    
+    // Disable caching with meta tags
+    const addNoCacheMetaTags = () => {
+      // Only add if they don't exist
+      if (!document.querySelector('meta[http-equiv="Cache-Control"]')) {
+        const cacheControlMeta = document.createElement('meta');
+        cacheControlMeta.setAttribute('http-equiv', 'Cache-Control');
+        cacheControlMeta.setAttribute('content', 'no-cache, no-store, must-revalidate');
+        document.head.appendChild(cacheControlMeta);
+      }
+      
+      if (!document.querySelector('meta[http-equiv="Pragma"]')) {
+        const pragmaMeta = document.createElement('meta');
+        pragmaMeta.setAttribute('http-equiv', 'Pragma');
+        pragmaMeta.setAttribute('content', 'no-cache');
+        document.head.appendChild(pragmaMeta);
+      }
+      
+      if (!document.querySelector('meta[http-equiv="Expires"]')) {
+        const expiresMeta = document.createElement('meta');
+        expiresMeta.setAttribute('http-equiv', 'Expires');
+        expiresMeta.setAttribute('content', '0');
+        document.head.appendChild(expiresMeta);
+      }
+    };
+    
+    addNoCacheMetaTags();
+    loadLiveData();
+    
+    // Set page title to help identify in OBS
+    document.title = obsMode ? "OBS Streaming Display (Firebase)" : "Streaming Display (Firebase)";
+    
+    // Listen for storage changes (for cross-tab communication)
+    const handleStorageChange = (e) => {
+      if (e.key === "streamingAppLiveUpdate" || e.key === "streamingData") {
+        console.log("Storage changed", e.key);
+        // Only use this as a fallback
+        if (!firebaseUnsubscribeRef.current) {
+          loadFromLocalSources();
+        }
+      }
+    };
+    
+    // Listen for postMessage events from parent window
+    const handleMessage = (event) => {
+      if (event.data && (event.data.type === "STREAMING_UPDATE" || event.data.type === "stream-update")) {
+        const { person: newPerson, settings: newSettings, timestamp } = event.data.data;
+        console.log("Received message update", event.data);
+        if (timestamp > lastUpdate) {
+          if (!newPerson || !newPerson.name || newPerson.name === '') {
+            setPerson(EMPTY_PERSON);
+          } else {
+            setPerson(newPerson);
+          }
+          setSettings(newSettings || DEFAULT_SETTINGS);
+          setLastUpdate(timestamp);
+          setLoading(false);
+          setDebugMessage("Updated via window message");
+        }
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("message", handleMessage);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [loadLiveData, loadFromLocalSources, lastUpdate, obsMode]);
 
-  if (!isDisplay) {
-    return (
-      <div className="display-error">
-        <h2>This page is meant to be used as a display.</h2>
-        <p>Please add ?display=true to the URL.</p>
-      </div>
-    );
-  }
+  // Return appropriate styles based on mode
+  const getContainerStyles = () => {
+    const baseStyles = {
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      overflow: 'hidden'
+    };
+    
+    // For OBS mode, use transparent background
+    if (obsMode) {
+      return {
+        ...baseStyles,
+        background: 'transparent'
+      };
+    }
+    
+    // Regular display mode
+    return {
+      ...baseStyles,
+      background: 'rgb(30, 30, 30)'
+    };
+  };
 
-  if (!person && isDisplay) {
-    return (
-      <div className="display-waiting">
-        <h2>Waiting for stream data...</h2>
-        <p className="debug-info">{debugMessage}</p>
-      </div>
-    );
-  }
+  // Define styles
+  const loadingStyles = {
+    color: '#ffffff',
+    textAlign: 'center',
+    fontSize: '14px',
+    opacity: 0.7
+  };
+
+  const debugContainerStyles = {
+    position: 'fixed',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    color: 'white',
+    padding: '4px',
+    fontSize: '10px',
+    zIndex: 1000
+  };
+
+  const debugMsgStyles = {
+    textAlign: 'center',
+    margin: '2px 0'
+  };
 
   return (
-    <div className="display-container" style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      minHeight: "100vh",
-      backgroundColor: obsMode ? "transparent" : "#111827",
-    }}>
-      <DisplayView person={person} settings={settings} />
-      
-      {/* Debug info (only in development) */}
-      {process.env.NODE_ENV === "development" && !obsMode && (
-        <div className="debug-panel" style={{
-          position: "fixed",
-          bottom: 10,
-          left: 10,
-          background: "rgba(0,0,0,0.7)",
-          padding: 10,
-          color: "white",
-          fontSize: 12,
-          maxWidth: 300,
-          zIndex: 1000,
-        }}>
-          <p><strong>Debug Info:</strong></p>
-          <p>Source: {debugMessage}</p>
-          <p>Last Update: {new Date(lastUpdate).toLocaleTimeString()}</p>
-          <p>Mode: {isReceiver ? "Receiver" : "Standard"} {obsMode ? "(OBS)" : ""}</p>
+    <div style={getContainerStyles()}>
+      {/* Display debug info when in development or enabled */}
+      {(process.env.NODE_ENV === "development" || urlParams.get("debug") === "true") && !obsMode && (
+        <div style={debugContainerStyles}>
+          {debugMessage && <div style={debugMsgStyles}>{debugMessage}</div>}
+          <div style={debugMsgStyles}>
+            Last Update: {new Date(lastUpdate).toLocaleTimeString()}
+            {refreshCountRef.current > 0 && ` (${refreshCountRef.current} refreshes)`}
+          </div>
         </div>
+      )}
+      
+      {/* While loading, show a loading indicator */}
+      {loading ? (
+        <div style={loadingStyles}>Loading display data...</div>
+      ) : (
+        /* When not loading, show the display view if we have a person */
+        person && settings && <DisplayView person={person} settings={settings} />
       )}
     </div>
   );
