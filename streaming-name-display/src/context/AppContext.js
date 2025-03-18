@@ -11,6 +11,7 @@ const defaultSettings = {
   displayStyle: "gradient", // gradient, solid, transparent, minimal
   textStyle: "bold", // normal, bold, light
   textColor: "white", // new setting for text color
+  backgroundColor: "#3b82f6", // new setting for custom background color
   borderStyle: "thin", // none, thin, glow, accent
   textShadow: true,
   boxShadow: true,

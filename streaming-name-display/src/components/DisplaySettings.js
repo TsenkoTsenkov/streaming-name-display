@@ -26,6 +26,7 @@ const DisplaySettings = () => {
     { id: 'minimal', name: 'Minimal', description: 'Subtle dark transparent background' },
     { id: 'red', name: 'Red', description: 'Vibrant red gradient' },
     { id: 'green', name: 'Green', description: 'Elegant green gradient' },
+    { id: 'custom', name: 'Custom Color', description: 'Use your own color' },
   ];
 
   // Text styles
@@ -79,6 +80,33 @@ const DisplaySettings = () => {
             </button>
           ))}
         </div>
+        
+        {/* Custom Background Color Picker - only show when custom style is selected */}
+        {displaySettings.displayStyle === 'custom' && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            marginTop: "12px",
+            gap: "8px"
+          }}>
+            <input
+              type="color"
+              value={displaySettings.backgroundColor || "#3b82f6"}
+              onChange={(e) => handleChangeSetting("backgroundColor", e.target.value)}
+              style={{
+                width: "40px",
+                height: "40px",
+                padding: "0",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                backgroundColor: "transparent"
+              }}
+              title="Pick custom background color"
+            />
+            <span style={{ color: "#6b7280" }}>Custom Background Color</span>
+          </div>
+        )}
       </div>
 
       {/* Text Style Selection */}
@@ -117,6 +145,28 @@ const DisplaySettings = () => {
             title="White text"
           >
             White
+          </button>
+          <button
+            onClick={() => handleChangeSetting("textColor", "#000000")}
+            style={{
+              ...styleButtonStyle,
+              backgroundColor: displaySettings.textColor === "#000000" ? "#4f46e5" : "#374151",
+              color: "#000000"
+            }}
+            title="Black text"
+          >
+            Black
+          </button>
+          <button
+            onClick={() => handleChangeSetting("textColor", "#ff0000")}
+            style={{
+              ...styleButtonStyle,
+              backgroundColor: displaySettings.textColor === "#ff0000" ? "#4f46e5" : "#374151",
+              color: "#ff0000"
+            }}
+            title="Red text"
+          >
+            Red
           </button>
           <button
             onClick={() => handleChangeSetting("textColor", "#ffeb3b")}
@@ -162,6 +212,53 @@ const DisplaySettings = () => {
           >
             Pink
           </button>
+          <button
+            onClick={() => handleChangeSetting("textColor", "#a855f7")}
+            style={{
+              ...styleButtonStyle,
+              backgroundColor: displaySettings.textColor === "#a855f7" ? "#4f46e5" : "#374151",
+              color: "#a855f7"
+            }}
+            title="Purple text"
+          >
+            Purple
+          </button>
+          <button
+            onClick={() => handleChangeSetting("textColor", "#f97316")}
+            style={{
+              ...styleButtonStyle,
+              backgroundColor: displaySettings.textColor === "#f97316" ? "#4f46e5" : "#374151",
+              color: "#f97316"
+            }}
+            title="Orange text"
+          >
+            Orange
+          </button>
+        </div>
+        
+        {/* Custom Color Picker */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          marginTop: "12px",
+          gap: "8px"
+        }}>
+          <input
+            type="color"
+            value={displaySettings.textColor}
+            onChange={(e) => handleChangeSetting("textColor", e.target.value)}
+            style={{
+              width: "40px",
+              height: "40px",
+              padding: "0",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              backgroundColor: "transparent"
+            }}
+            title="Pick custom color"
+          />
+          <span style={{ color: "#6b7280" }}>Custom Color</span>
         </div>
       </div>
 

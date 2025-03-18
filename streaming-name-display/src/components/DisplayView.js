@@ -30,7 +30,8 @@ const DisplayView = ({ person, settings }) => {
       borderStyle,
       boxShadow,
       cornerRadius = 8,
-      padding = 16
+      padding = 16,
+      backgroundColor = '#3b82f6'
     } = settings;
 
     const baseStyles = {
@@ -109,10 +110,32 @@ const DisplayView = ({ person, settings }) => {
                  borderStyle === 'accent' ? '2px solid #34d399' : 'none',
         };
       case 'custom':
-        // Custom color scheme could be implemented with color pickers
+        // Use the custom backgroundColor from settings
+        // Create a gradient effect from the selected color to a darker shade
+        const color = backgroundColor || '#3b82f6';
+        
+        // Helper function to darken a color by a percentage
+        const darkenColor = (color, percent) => {
+          // Convert hex to RGB
+          let r = parseInt(color.substr(1, 2), 16);
+          let g = parseInt(color.substr(3, 2), 16);
+          let b = parseInt(color.substr(5, 2), 16);
+          
+          // Darken each component
+          r = Math.floor(r * (1 - percent / 100));
+          g = Math.floor(g * (1 - percent / 100));
+          b = Math.floor(b * (1 - percent / 100));
+          
+          // Convert back to hex
+          return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        };
+        
+        // Create a darker version for the gradient
+        const darkerColor = darkenColor(color, 30);
+        
         return {
           ...baseStyles,
-          background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+          background: `linear-gradient(135deg, ${darkerColor} 0%, ${color} 100%)`,
           boxShadow: boxShadow ? '0 10px 25px rgba(0, 0, 0, 0.3)' : 'none',
           border: borderStyle === 'thin' ? '1px solid rgba(255, 255, 255, 0.2)' : 
                  borderStyle === 'thick' ? '3px solid rgba(255, 255, 255, 0.3)' : 
