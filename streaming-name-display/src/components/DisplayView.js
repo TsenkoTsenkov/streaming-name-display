@@ -6,19 +6,11 @@ const DisplayView = ({ person, settings }) => {
   // Trigger animations on mount or when person changes
   useEffect(() => {
     setAnimate(false);
-    // Brief delay to allow the opacity transition to be visible
+    // Brief delay to allow the animation transition to be visible
     setTimeout(() => {
       setAnimate(true);
     }, 50);
   }, [person?.id]);
-  
-  // For fade animation, we need to handle opacity specially
-  const getInitialOpacity = () => {
-    if (!animate && settings.animation === 'fade') {
-      return 0; // Start at 0 opacity for fade animation
-    }
-    return settings.opacity ?? 1; // Otherwise use the configured opacity
-  };
   
   // Return null (render nothing) in the following cases:
   // 1. No person or settings data
@@ -40,8 +32,17 @@ const DisplayView = ({ person, settings }) => {
       boxShadow,
       cornerRadius = 8,
       padding = 16,
-      backgroundColor = '#3b82f6'
+      backgroundColor = '#3b82f6',
+      opacity = 1
     } = settings;
+
+    // Helper function to convert hex to rgba
+    const hexToRgba = (hex, alpha) => {
+      const r = parseInt(hex.substring(1, 3), 16);
+      const g = parseInt(hex.substring(3, 5), 16);
+      const b = parseInt(hex.substring(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
 
     const baseStyles = {
       position: 'relative',
@@ -52,16 +53,17 @@ const DisplayView = ({ person, settings }) => {
       padding: `${padding}px`,
       color: 'white',
       fontFamily: "'Inter', system-ui, sans-serif",
-      transition: 'all 0.3s ease',
-      opacity: getInitialOpacity(),
+      transition: 'all 0.3s ease'
     };
 
     // Apply styles based on displayStyle
     switch (displayStyle) {
       case 'gradient':
+        // Apply opacity to the gradient colors individually
+        const gradientOpacity = opacity;
         return {
           ...baseStyles,
-          background: 'linear-gradient(135deg, #4c1d95 0%, #2563eb 100%)',
+          background: `linear-gradient(135deg, rgba(76, 29, 149, ${gradientOpacity}) 0%, rgba(37, 99, 235, ${gradientOpacity}) 100%)`,
           boxShadow: boxShadow ? '0 10px 25px rgba(0, 0, 0, 0.2)' : 'none',
           border: borderStyle === 'thin' ? '1px solid rgba(255, 255, 255, 0.2)' : 
                  borderStyle === 'thick' ? '3px solid rgba(255, 255, 255, 0.3)' : 
@@ -71,7 +73,7 @@ const DisplayView = ({ person, settings }) => {
       case 'solid':
         return {
           ...baseStyles,
-          backgroundColor: '#111827',
+          backgroundColor: `rgba(17, 24, 39, ${opacity})`,
           boxShadow: boxShadow ? '0 10px 15px rgba(0, 0, 0, 0.3)' : 'none',
           border: borderStyle === 'thin' ? '1px solid rgba(255, 255, 255, 0.1)' : 
                  borderStyle === 'thick' ? '3px solid rgba(255, 255, 255, 0.2)' : 
@@ -91,7 +93,7 @@ const DisplayView = ({ person, settings }) => {
       case 'minimal':
         return {
           ...baseStyles,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: `rgba(0, 0, 0, ${0.5 * opacity})`,
           backdropFilter: 'blur(10px)',
           boxShadow: boxShadow ? '0 4px 6px rgba(0, 0, 0, 0.1)' : 'none',
           border: borderStyle === 'thin' ? '1px solid rgba(255, 255, 255, 0.1)' : 
@@ -102,7 +104,7 @@ const DisplayView = ({ person, settings }) => {
       case 'red':
         return {
           ...baseStyles,
-          background: 'linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%)',
+          background: `linear-gradient(135deg, rgba(127, 29, 29, ${opacity}) 0%, rgba(239, 68, 68, ${opacity}) 100%)`,
           boxShadow: boxShadow ? '0 10px 25px rgba(239, 68, 68, 0.3)' : 'none',
           border: borderStyle === 'thin' ? '1px solid rgba(255, 255, 255, 0.2)' : 
                  borderStyle === 'thick' ? '3px solid rgba(255, 255, 255, 0.3)' : 
@@ -112,7 +114,7 @@ const DisplayView = ({ person, settings }) => {
       case 'green':
         return {
           ...baseStyles,
-          background: 'linear-gradient(135deg, #064e3b 0%, #10b981 100%)',
+          background: `linear-gradient(135deg, rgba(6, 78, 59, ${opacity}) 0%, rgba(16, 185, 129, ${opacity}) 100%)`,
           boxShadow: boxShadow ? '0 10px 25px rgba(16, 185, 129, 0.3)' : 'none',
           border: borderStyle === 'thin' ? '1px solid rgba(255, 255, 255, 0.2)' : 
                  borderStyle === 'thick' ? '3px solid rgba(255, 255, 255, 0.3)' : 
@@ -143,9 +145,13 @@ const DisplayView = ({ person, settings }) => {
         // Create a darker version for the gradient
         const darkerColor = darkenColor(color, 30);
         
+        // Convert hex colors to rgba with opacity
+        const startColor = hexToRgba(darkerColor, opacity);
+        const endColor = hexToRgba(color, opacity);
+        
         return {
           ...baseStyles,
-          background: `linear-gradient(135deg, ${darkerColor} 0%, ${color} 100%)`,
+          background: `linear-gradient(135deg, ${startColor} 0%, ${endColor} 100%)`,
           boxShadow: boxShadow ? '0 10px 25px rgba(0, 0, 0, 0.3)' : 'none',
           border: borderStyle === 'thin' ? '1px solid rgba(255, 255, 255, 0.2)' : 
                  borderStyle === 'thick' ? '3px solid rgba(255, 255, 255, 0.3)' : 
@@ -288,6 +294,8 @@ const DisplayView = ({ person, settings }) => {
       // Initial state before animation starts
       switch (animation) {
         case 'fade':
+          // For fade in animation, we need to make the whole container start invisible
+          // but the opacity will be restored after animation
           return { opacity: 0 };
         case 'slide':
           return { transform: 'translateX(-20px)', opacity: 0 };
@@ -304,21 +312,19 @@ const DisplayView = ({ person, settings }) => {
     switch (animation) {
       case 'fade':
         return { 
-          // Don't include opacity here, we'll handle it separately
+          opacity: 1,
           transition: 'opacity 0.5s ease-out'
         };
       case 'slide':
         return { 
           transform: 'translateX(0)',
-          // Only set opacity if we're in the animation phase
-          ...(animate ? {} : { opacity: 0 }),
+          opacity: 1,
           transition: 'transform 0.5s ease-out, opacity 0.5s ease-out'
         };
       case 'pop':
         return { 
           transform: 'scale(1)',
-          // Only set opacity if we're in the animation phase
-          ...(animate ? {} : { opacity: 0 }),
+          opacity: 1,
           transition: 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease-out'
         };
       case 'pulse':
@@ -350,11 +356,6 @@ const DisplayView = ({ person, settings }) => {
     ...getAnimationStyles(),
     position: 'relative', // Ensure position is set for decorative elements
   };
-  
-  // Once animation is complete, ensure we're using the correct opacity setting
-  if (animate) {
-    containerStyles.opacity = settings.opacity ?? 1;
-  }
   
   const nameStyles = getNameStyles();
   const titleStyles = getTitleStyles();
@@ -418,12 +419,14 @@ const DisplayView = ({ person, settings }) => {
   
   return (
     <div style={containerStyles}>
-      {settings.showName && (
-        <h1 style={nameStyles}>{displayName}</h1>
-      )}
-      {settings.showTitles && person.title && (
-        <div style={titleStyles}>{displayTitle}</div>
-      )}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {settings.showName && (
+          <h1 style={nameStyles}>{displayName}</h1>
+        )}
+        {settings.showTitles && person.title && (
+          <div style={titleStyles}>{displayTitle}</div>
+        )}
+      </div>
       
       {/* Render decorative elements */}
       {renderDecorativeElements()}
