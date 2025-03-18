@@ -10,6 +10,7 @@ const defaultSettings = {
   showTitles: true,
   displayStyle: "gradient", // gradient, solid, transparent, minimal
   textStyle: "bold", // normal, bold, light
+  textColor: "white", // new setting for text color
   borderStyle: "thin", // none, thin, glow, accent
   textShadow: true,
   boxShadow: true,

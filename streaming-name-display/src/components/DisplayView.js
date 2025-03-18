@@ -130,7 +130,8 @@ const DisplayView = ({ person, settings }) => {
       fontSize, 
       textStyle,
       textShadow,
-      centeredText
+      centeredText,
+      textColor = 'white' // Default to white if not specified
     } = settings;
 
     const baseStyles = {
@@ -139,6 +140,7 @@ const DisplayView = ({ person, settings }) => {
       margin: 0,
       transition: 'all 0.3s ease',
       textAlign: centeredText ? 'center' : 'left',
+      color: textColor, // Use the textColor setting
     };
 
     // Apply styles based on textStyle
@@ -188,16 +190,19 @@ const DisplayView = ({ person, settings }) => {
       titleFontSize, 
       textStyle,
       textShadow,
-      centeredText
+      centeredText,
+      textColor = 'white' // Default to white if not specified 
     } = settings;
 
     const baseStyles = {
       fontSize: `${titleFontSize}px`,
       lineHeight: '1.4',
-      color: 'rgba(255, 255, 255, 0.8)',
       margin: '4px 0 0 0',
+      fontWeight: '400',
+      opacity: '0.8',
       transition: 'all 0.3s ease',
       textAlign: centeredText ? 'center' : 'left',
+      color: textColor, // Use the textColor setting
     };
 
     // Apply styles based on textStyle
@@ -290,6 +295,20 @@ const DisplayView = ({ person, settings }) => {
     }
   };
 
+  // Handle case formatting based on text style
+  const formatTextCase = (text, style) => {
+    if (!text) return '';
+    
+    switch (style) {
+      case 'uppercase':
+        return text.toUpperCase();
+      case 'preserve-case':
+        return text; // Keep original capitalization
+      default:
+        return text;
+    }
+  };
+
   // Apply all styles
   const containerStyles = {
     ...getContainerStyles(),
@@ -300,10 +319,9 @@ const DisplayView = ({ person, settings }) => {
   const nameStyles = getNameStyles();
   const titleStyles = getTitleStyles();
 
-  // Special case for text style uppercase
-  const displayName = settings.textStyle === 'uppercase' 
-    ? `${person.name} ${person.surname || ''}`.toUpperCase() 
-    : `${person.name} ${person.surname || ''}`;
+  // Format name and title based on text style
+  const displayName = formatTextCase(`${person.name} ${person.surname || ''}`, settings.textStyle);
+  const displayTitle = formatTextCase(person.title, settings.textStyle);
 
   // Get the accent color based on display style for decorative elements
   const getAccentColor = () => {
@@ -364,7 +382,7 @@ const DisplayView = ({ person, settings }) => {
         <h1 style={nameStyles}>{displayName}</h1>
       )}
       {settings.showTitles && person.title && (
-        <div style={titleStyles}>{settings.textStyle === 'uppercase' ? person.title.toUpperCase() : person.title}</div>
+        <div style={titleStyles}>{displayTitle}</div>
       )}
       
       {/* Render decorative elements */}

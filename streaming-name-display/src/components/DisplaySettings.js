@@ -30,6 +30,7 @@ const DisplaySettings = () => {
 
   // Text styles
   const textStyles = [
+    { id: 'preserve-case', name: 'Preserve Case', description: 'Keeps original capitalization' },
     { id: 'normal', name: 'Normal', description: 'Regular text weight' },
     { id: 'bold', name: 'Bold', description: 'Heavy text weight' },
     { id: 'light', name: 'Light', description: 'Thin elegant text' },
@@ -98,6 +99,69 @@ const DisplaySettings = () => {
               {style.name}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Text Color Selection */}
+      <div className="setting-section">
+        <h3 style={sectionHeadingStyle}>Text Color</h3>
+        <div style={buttonGroupStyle}>
+          {/* Common text colors */}
+          <button
+            onClick={() => handleChangeSetting("textColor", "white")}
+            style={{
+              ...styleButtonStyle,
+              backgroundColor: displaySettings.textColor === "white" ? "#4f46e5" : "#374151",
+              color: "white"
+            }}
+            title="White text"
+          >
+            White
+          </button>
+          <button
+            onClick={() => handleChangeSetting("textColor", "#ffeb3b")}
+            style={{
+              ...styleButtonStyle,
+              backgroundColor: displaySettings.textColor === "#ffeb3b" ? "#4f46e5" : "#374151",
+              color: "#ffeb3b"
+            }}
+            title="Yellow text"
+          >
+            Yellow
+          </button>
+          <button
+            onClick={() => handleChangeSetting("textColor", "#4ade80")}
+            style={{
+              ...styleButtonStyle,
+              backgroundColor: displaySettings.textColor === "#4ade80" ? "#4f46e5" : "#374151",
+              color: "#4ade80"
+            }}
+            title="Green text"
+          >
+            Green
+          </button>
+          <button
+            onClick={() => handleChangeSetting("textColor", "#60a5fa")}
+            style={{
+              ...styleButtonStyle,
+              backgroundColor: displaySettings.textColor === "#60a5fa" ? "#4f46e5" : "#374151",
+              color: "#60a5fa"
+            }}
+            title="Blue text"
+          >
+            Blue
+          </button>
+          <button
+            onClick={() => handleChangeSetting("textColor", "#f472b6")}
+            style={{
+              ...styleButtonStyle,
+              backgroundColor: displaySettings.textColor === "#f472b6" ? "#4f46e5" : "#374151",
+              color: "#f472b6"
+            }}
+            title="Pink text"
+          >
+            Pink
+          </button>
         </div>
       </div>
 
